@@ -6,15 +6,15 @@
   "packageManager": "pnpm@10.33.0",
   "description": "Quevra user-facing dapp",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
     "check": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "dependencies": {
-    "bootstrap": "^5.3.8",
+    "bootstrap": "4.4.1",
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
@@ -23,6 +23,7 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "sass": "^1.77.4",
     "typescript": "^5.9.3"
   }
 }
