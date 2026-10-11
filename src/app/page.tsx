@@ -1,74 +1,110 @@
 const metrics = [
-  { label: "Active validators", value: "—", note: "Validator set" },
   { label: "Total staked", value: "—", note: "MON delegated" },
-  { label: "Network epoch", value: "—", note: "Current epoch" },
+  { label: "Active validators", value: "—", note: "Validator set" },
+  { label: "Current epoch", value: "—", note: "Network progress" },
 ];
+
+const validatorRows = ["Validator details", "Stake distribution", "Commission rate"];
 
 export default function DashboardPage() {
   return (
-    <div className="dashboard container-fluid px-0">
-      <div className="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
-        <div>
-          <div className="eyebrow">QUEVRA NETWORK</div>
-          <h1>Good morning.</h1>
-          <p className="page-description">A clear view of what’s happening across the network.</p>
+    <div className="quevra-dashboard container-fluid px-0">
+      <div className="os-tabs-w">
+        <div className="os-tabs-controls os-tabs-complex">
+          <ul aria-label="Network sections" className="nav nav-tabs">
+            <li className="nav-item">
+              <span aria-current="page" className="nav-link active"><span className="tab-label">Network overview</span></span>
+            </li>
+            <li className="nav-item d-none d-sm-block">
+              <span className="nav-link"><span className="tab-label">Validator set</span></span>
+            </li>
+            <li className="nav-item d-none d-lg-block">
+              <span className="nav-link"><span className="tab-label">Delegations</span></span>
+            </li>
+          </ul>
         </div>
-        <div className="updated-label"><span className="status-pulse" /> Network status <strong>Operational</strong></div>
       </div>
 
-      <section className="row g-3 g-xl-4 metric-grid" aria-label="Network overview">
+      <div className="page-intro">
+        <div className="page-intro-eyebrow">QUEVRA NETWORK</div>
+        <h1>Network overview</h1>
+        <p>Monitor validator participation and staking across Quevra.</p>
+      </div>
+
+      <section aria-label="Network metrics" className="row pt-2 g-3 dashboard-metrics">
         {metrics.map((metric) => (
-          <div className="col-12 col-md-4" key={metric.label}>
-            <article className="metric-card h-100">
-              <div className="metric-label">{metric.label}</div>
-              <div className="metric-value">{metric.value}</div>
+          <div className="col-12 col-sm-6 col-xl-4" key={metric.label}>
+            <article className="element-box el-tablo centered smaller metric-box">
+              <div className="label">{metric.label}</div>
+              <div className="value">{metric.value}</div>
               <div className="metric-note">{metric.note}</div>
             </article>
           </div>
         ))}
       </section>
 
-      <section className="row g-3 g-xl-4 lower-grid">
-        <div className="col-12 col-xl-7">
-          <article className="panel-card network-panel h-100">
-            <div className="panel-heading">
-              <div>
-                <h2>Network activity</h2>
-                <p>Recent activity will appear here.</p>
-              </div>
-              <span className="panel-icon" aria-hidden="true">⌁</span>
+      <div className="row dashboard-content">
+        <div className="col-12 col-xxl-8">
+          <section className="element-wrapper compact">
+            <div className="element-actions d-none d-sm-block">
+              <span className="period-label">Last 30 days</span>
             </div>
-            <div className="empty-chart" aria-label="No network activity available yet">
-              <div className="chart-guides"><span /><span /><span /><span /></div>
-              <div className="chart-placeholder">
-                <span className="chart-dot dot-one" /><span className="chart-dot dot-two" /><span className="chart-dot dot-three" />
-                <svg viewBox="0 0 720 160" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M0 126 C55 118 66 82 118 95 S198 139 245 101 307 57 362 83 431 123 482 75 546 64 590 80 663 28 720 42" />
+            <h2 className="element-header">Network activity</h2>
+            <div className="element-box-tp">
+              <div aria-label="Network activity chart placeholder" className="el-chart-w activity-chart">
+                <div className="activity-chart-grid"><span /><span /><span /><span /></div>
+                <svg aria-hidden="true" className="activity-chart-line" preserveAspectRatio="none" viewBox="0 0 720 180">
+                  <defs>
+                    <linearGradient id="activity-fill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#4b72fa" stopOpacity="0.22" />
+                      <stop offset="100%" stopColor="#4b72fa" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path className="activity-chart-area" d="M0 143 C52 138 72 100 122 109 S207 151 255 118 325 62 371 84 431 126 486 83 553 67 598 82 671 38 720 47 V180 H0Z" />
+                  <path className="activity-chart-stroke" d="M0 143 C52 138 72 100 122 109 S207 151 255 118 325 62 371 84 431 126 486 83 553 67 598 82 671 38 720 47" />
                 </svg>
+                <div className="activity-chart-axis"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
               </div>
-              <div className="chart-axis"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
+              <div className="activity-chart-caption"><span className="activity-legend" /> Quevra network activity <span className="text-faded">Data will populate when connected.</span></div>
             </div>
-            <div className="panel-footnote"><span className="legend-dot" /> Transactions <span className="placeholder-copy">Data will be available when the network is connected.</span></div>
-          </article>
-        </div>
-        <div className="col-12 col-xl-5">
-          <article className="panel-card validators-panel h-100">
-            <div className="panel-heading">
-              <div>
-                <h2>Validator set</h2>
-                <p>Participating network validators.</p>
+          </section>
+
+          <section className="row pt-2 g-3 metric-detail-row" aria-label="Network details">
+            {validatorRows.map((label) => (
+              <div className="col-12 col-md-4" key={label}>
+                <article className="element-box el-tablo centered smaller detail-box">
+                  <div className="label">{label}</div>
+                  <div className="value">—</div>
+                </article>
               </div>
-              <a className="panel-link" href="#validators">View all <span aria-hidden="true">→</span></a>
-            </div>
-            <div className="empty-state">
-              <div className="empty-state-mark" aria-hidden="true">◈</div>
-              <div className="empty-state-title">Validator data is on its way</div>
-              <p>Validator details will appear here once the network integration is ready.</p>
-            </div>
-          </article>
+            ))}
+          </section>
         </div>
-      </section>
-      <footer className="page-footer">Quevra <span>·</span> Network dashboard</footer>
+
+        <div className="col-12 col-xxl-4">
+          <section className="element-box less-padding validator-box">
+            <h2 className="element-box-header">Validator set</h2>
+            <div className="element-box-tp">
+              <table className="table table-lightborder table-clean mb-0">
+                <thead>
+                  <tr><th>Validator</th><th className="text-right">Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colSpan={2}>
+                    <div className="validator-empty">
+                      <i aria-hidden="true" className="os-icon os-icon-layers" />
+                      <div className="validator-empty-title">Validator data is on its way</div>
+                      <p>Validator details will appear when the network is connected.</p>
+                    </div>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer className="dashboard-footer">Quevra <span>·</span> Network dashboard</footer>
     </div>
   );
 }
