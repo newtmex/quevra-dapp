@@ -236,29 +236,74 @@ body {
   white-space: nowrap;
 }
 
-.theme-toggle {
-  display: inline-grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  place-items: center;
-  margin: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
+.floated-colors-btn {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 75px;
+  background: #252a32;
   color: #fff;
-  font-size: 15px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  font-size: 1.08rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.theme-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.18);
+.floated-colors-btn:hover {
+  transform: scale(1.05);
+  background: #0f1115;
 }
 
-.theme-toggle:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+.floated-colors-btn:focus-visible {
+  outline: 2px solid #047bf8;
+  outline-offset: 3px;
+}
+
+.floated-colors-btn > span:not(.os-toggler-w) {
+  font-weight: 500;
+}
+
+.floated-colors-btn > span + span:not(.os-toggler-w) {
+  margin-left: 5px;
+}
+
+.os-toggler-w {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.os-toggler-i {
+  position: relative;
+  width: 35px;
+  height: 20px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.os-toggler-pill {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+
+.os-toggler-w.on .os-toggler-i {
+  background-color: #e1e6f2;
+}
+
+.os-toggler-w.on .os-toggler-pill {
+  transform: translate(15px, -50%);
+  background-color: #047bf8;
 }
 
 .network-status-dot {
@@ -411,13 +456,14 @@ body.color-scheme-dark .network-status-pill {
   color: rgba(255, 255, 255, 0.78);
 }
 
-body.color-scheme-dark .theme-toggle {
+body.color-scheme-dark .floated-colors-btn {
   border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.18);
+  background: #fff;
+  color: #3e4b5b;
 }
 
-body.color-scheme-dark .theme-toggle:hover {
-  background: rgba(0, 0, 0, 0.3);
+body.color-scheme-dark .floated-colors-btn:hover {
+  background: #f2f4f8;
 }
 
 .mobile-menu-trigger,

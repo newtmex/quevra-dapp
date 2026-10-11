@@ -121,15 +121,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="element-search">
                 <input aria-label="Search Quevra" placeholder="Search Quevra..." type="search" />
               </div>
-              <button
-                aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-                aria-pressed={isDark}
-                className="theme-toggle"
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                type="button"
-              >
-                <i aria-hidden="true" className={`os-icon os-icon-${isDark ? "sun" : "moon"}`} />
-              </button>
               <div className="network-status-pill">
                 <span className="network-status-dot" />
                 Testnet preview
@@ -172,6 +163,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
+      <button
+        aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+        aria-pressed={isDark}
+        className="floated-colors-btn"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        type="button"
+      >
+        <span aria-hidden="true" className={`os-toggler-w${isDark ? " on" : ""}`}>
+          <span className="os-toggler-i"><span className="os-toggler-pill" /></span>
+        </span>
+        <span>Dark</span><span>Colors</span>
+      </button>
     </div>
   );
 }
