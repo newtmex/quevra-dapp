@@ -236,6 +236,31 @@ body {
   white-space: nowrap;
 }
 
+.theme-toggle {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  margin: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 15px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .network-status-dot {
   display: inline-block;
   width: 7px;
@@ -309,6 +334,90 @@ body {
 
 .snapshot-note .network-status-dot {
   margin-top: 4px;
+}
+
+/* Light Admin's dark color scheme, applied alongside its compiled theme rules. */
+body.color-scheme-dark {
+  min-height: 100vh;
+  background-color: #293145;
+  color: #ccd9e8;
+}
+
+body.color-scheme-dark .all-wrapper,
+body.color-scheme-dark .content-w {
+  background-color: #293145;
+}
+
+body.color-scheme-dark .content-w {
+  background-image: none;
+}
+
+body.color-scheme-dark .element-box {
+  border-color: rgba(255, 255, 255, 0.04);
+  background-color: #323c58;
+  background-image: linear-gradient(to bottom, #323c58 0%, #303950 100%);
+  box-shadow: 0 5px 15px rgba(22, 22, 35, 0.1);
+}
+
+body.color-scheme-dark .page-intro h1,
+body.color-scheme-dark .metric-box .value,
+body.color-scheme-dark .detail-box .value,
+body.color-scheme-dark .validator-empty-title {
+  color: #fff;
+}
+
+body.color-scheme-dark .page-intro p,
+body.color-scheme-dark .metric-note,
+body.color-scheme-dark .activity-chart-caption,
+body.color-scheme-dark .activity-chart-caption .text-faded,
+body.color-scheme-dark .activity-chart-axis,
+body.color-scheme-dark .dashboard-footer {
+  color: rgba(218, 226, 243, 0.56);
+}
+
+body.color-scheme-dark .activity-chart-grid span {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+body.color-scheme-dark .period-label {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(218, 226, 243, 0.65);
+}
+
+body.color-scheme-dark .table {
+  --bs-table-color: #ccd9e8;
+  --bs-table-bg: transparent;
+  --bs-table-border-color: rgba(159, 172, 199, 0.12);
+  --bs-table-striped-bg: rgba(16, 27, 33, 0.05);
+  --bs-table-striped-color: #ccd9e8;
+}
+
+body.color-scheme-dark .table thead th {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  color: rgba(218, 226, 243, 0.5);
+}
+
+body.color-scheme-dark .table.table-lightborder td {
+  border-color: rgba(159, 172, 199, 0.12);
+}
+
+body.color-scheme-dark .top-bar.color-scheme-transparent {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+body.color-scheme-dark .top-bar .mobile-menu-trigger,
+body.color-scheme-dark .network-status-pill {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+body.color-scheme-dark .theme-toggle {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+body.color-scheme-dark .theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .mobile-menu-trigger,

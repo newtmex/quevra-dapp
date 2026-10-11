@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const navigation = [
   { label: "Overview", icon: "layout", active: true },
@@ -11,9 +11,25 @@ const navigation = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [themeLoaded, setThemeLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("quevra-theme");
+    if (savedTheme === "dark" || savedTheme === "light") setTheme(savedTheme);
+    setThemeLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!themeLoaded) return;
+    document.body.classList.toggle("color-scheme-dark", theme === "dark");
+    window.localStorage.setItem("quevra-theme", theme);
+  }, [theme, themeLoaded]);
+
+  const isDark = theme === "dark";
 
   return (
-    <div className="all-wrapper solid-bg-all">
+    <div className="all-wrapper">
       {menuOpen && (
         <button
           aria-label="Close navigation"
@@ -26,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="layout-w">
         <aside
           aria-label="Main navigation"
-          className={`menu-w color-scheme-dark color-style-bright menu-position-side menu-side-left menu-layout-mini selected-menu-color-light menu-activated-on-click menu-has-selected-link${menuOpen ? " mobile-open" : ""}`}
+          className={`menu-w color-scheme-dark color-style-${isDark ? "transparent" : "bright"} menu-position-side menu-side-left menu-layout-mini selected-menu-color-${isDark ? "bright" : "light"} menu-activated-on-click menu-has-selected-link${menuOpen ? " mobile-open" : ""}`}
         >
           <div className="logo-w">
             <Link aria-label="Quevra home" className="logo" href="/">
@@ -76,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="content-w">
-          <header className="top-bar color-scheme-bright">
+          <header className={`top-bar color-scheme-${isDark ? "transparent" : "bright"}`}>
             <button
               aria-label="Open navigation"
               className="mobile-menu-trigger"
@@ -105,6 +121,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="element-search">
                 <input aria-label="Search Quevra" placeholder="Search Quevra..." type="search" />
               </div>
+              <button
+                aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+                aria-pressed={isDark}
+                className="theme-toggle"
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                type="button"
+              >
+                <i aria-hidden="true" className={`os-icon os-icon-${isDark ? "sun" : "moon"}`} />
+              </button>
               <div className="network-status-pill">
                 <span className="network-status-dot" />
                 Testnet preview
