@@ -1,4 +1,5 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { injectedWallet } from "@rainbow-me/rainbowkit/wallets";
 import { defineChain, http } from "viem";
 import { createConfig, type Config } from "wagmi";
 
@@ -32,7 +33,13 @@ export function getWagmiConfig(): Config {
 
   browserConfig ??= getDefaultConfig({
     appName: "Quevra",
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "quevra-testnet-dashboard",
+    // WalletConnect requires a project ID issued by Reown. Until one is
+    // configured, expose injected browser wallets without making a failing
+    // request with a placeholder ID.
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+    ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+      ? {}
+      : { wallets: [{ groupName: "Browser wallets", wallets: [injectedWallet] }] }),
     chains: [monadTestnet],
     transports: { [monadTestnet.id]: http(rpcUrl) },
     ssr: true,

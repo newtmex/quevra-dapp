@@ -2,9 +2,10 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ChevronDown, Wallet } from "lucide-react";
+import type { ReactNode } from "react";
 import { monadTestnet } from "@/lib/web3";
 
-export default function WalletButton() {
+export function WalletButton({ children }: { children?: ReactNode }) {
   return (
     <ConnectButton.Custom>
       {({ account, chain, mounted, openAccountModal, openChainModal, openConnectModal }) => {
@@ -19,6 +20,7 @@ export default function WalletButton() {
         if (wrongNetwork) {
           return <button className="wallet-button wallet-button--warning" onClick={openChainModal} type="button">Switch network</button>;
         }
+        if (children != null) return children;
         return (
           <button className="wallet-button" onClick={openAccountModal} type="button">
             <span className="wallet-button__dot" />
@@ -30,3 +32,5 @@ export default function WalletButton() {
     </ConnectButton.Custom>
   );
 }
+
+export default WalletButton;

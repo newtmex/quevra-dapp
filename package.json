@@ -6,9 +6,10 @@
   "packageManager": "pnpm@10.33.0",
   "description": "Quevra user-facing dapp",
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
+    "contracts:sync": "node scripts/sync-contracts.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
     "check": "pnpm run typecheck && pnpm run test && pnpm run build"
@@ -26,7 +27,8 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "viem": "2.48.1",
-    "wagmi": "2.19.5"
+    "wagmi": "2.19.5",
+    "zustand": "5.0.12"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
