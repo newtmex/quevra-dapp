@@ -1,0 +1,13 @@
+@layer theme, base, components, utilities;
+@source "../";
+
+@import "tailwindcss/theme.css" layer(theme) prefix(qv);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(qv);
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+}

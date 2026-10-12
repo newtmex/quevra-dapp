@@ -5,15 +5,13 @@ import TopBar from "./components/TopBar";
 
 export default function UserLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="all-wrapper solid-bg-all quevra-app-shell">
-      <div className="layout-w">
+    <div className="qv:min-h-screen qv:bg-[#0b0c12]">
+      <div className="qv:flex qv:min-h-screen qv:flex-col qv:lg:flex-row">
         <MobileMenu />
-        <MainMenu isDark />
-        <div className="content-w">
+        <MainMenu />
+        <div className="qv:min-w-0 qv:flex-1 qv:bg-[#0b0c12]">
           <TopBar />
-          <div className="content-i">
-            <main className="content-box">{children}</main>
-          </div>
+          <main className="qv:mx-auto qv:w-full qv:max-w-[1510px] qv:px-[14px] qv:py-[27px] qv:pb-[42px] qv:sm:px-[18px] qv:sm:py-[34px] qv:sm:pb-[60px] qv:lg:px-[4vw] qv:lg:py-[34px]">{children}</main>
         </div>
       </div>
     </div>

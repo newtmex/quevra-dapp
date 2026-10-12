@@ -97,7 +97,7 @@ const TransactionButton = forwardRef<TransactionButtonHandle, Props>(function Tr
     <WalletButton>
       <button
         {...props}
-        className={className ?? "transaction-button"}
+        className={className ?? "qv:mt-0.5 qv:inline-flex qv:h-[42px] qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-4 qv:text-[11px] qv:font-semibold qv:text-white qv:shadow-[0_8px_20px_rgba(112,88,233,0.2)] qv:transition qv:hover:brightness-110 qv:disabled:cursor-not-allowed qv:disabled:opacity-[0.46] qv:disabled:shadow-none"}
         type={type}
         onClick={type === "submit" ? undefined : () => void run()}
         disabled={Boolean(disabled || running || chain?.id !== monadTestnet.id)}
