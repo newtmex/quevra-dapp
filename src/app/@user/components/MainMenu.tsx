@@ -1,9 +1,7 @@
 import Link from "next/link";
 
 export const networkSections = [
-  { href: "/", icon: "layout", label: "Overview", active: true },
-  { href: "/validators", icon: "user-male-circle2", label: "Validators", active: false },
-  { href: "/delegations", icon: "layers", label: "Delegations", active: false },
+  { href: "/", icon: "layout", label: "Dashboard", active: true },
 ];
 
 export default function MainMenu({ isDark }: { isDark: boolean }) {
