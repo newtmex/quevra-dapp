@@ -11,10 +11,12 @@
     "start": "next start",
     "contracts:sync": "node scripts/sync-contracts.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test",
+    "test": "node --experimental-strip-types --test",
     "check": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "dependencies": {
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
     "@rainbow-me/rainbowkit": "2.2.10",
     "@tanstack/react-query": "5.99.2",
     "@x402/core": "2.25.0",
