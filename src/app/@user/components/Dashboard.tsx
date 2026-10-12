@@ -18,7 +18,7 @@ const metricCards = [
 
 const panelClass = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const panelTitleClass = "qv:mt-1.5 qv:text-[15px] qv:font-semibold qv:tracking-[-0.015em] qv:text-[#e9e9f1]";
-const kickerClass = "qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:font-bold qv:tracking-[0.12em] qv:text-[#77798d]";
+const kickerClass = "qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:font-bold qv:tracking-[0.12em] qv:text-[#aeb0c0]";
 const emptyIconClass = "qv:grid qv:size-[38px] qv:place-items-center qv:rounded-xl qv:border qv:border-[rgba(141,120,255,0.18)] qv:bg-[rgba(141,120,255,0.09)] qv:text-[#9f8fff]";
 const explorerLinkClass = "qv:inline-flex qv:items-center qv:gap-1 qv:text-[10px] qv:text-[#a99aff] qv:no-underline qv:hover:text-white";
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
         <div>
           <div className="qv:flex qv:items-center qv:gap-2 qv:text-[10px] qv:font-bold qv:tracking-[0.13em] qv:text-[#9e91eb]"><span className="qv:size-1.5 qv:rounded-full qv:bg-[#52ddc3]" /> QUEVRA · MONAD TESTNET</div>
           <h1 className="qv:mb-1.5 qv:mt-3 qv:text-[26px] qv:font-semibold qv:tracking-[-0.045em] qv:text-[#f2f2f8] qv:sm:text-[34px]">Your onchain portfolio</h1>
-          <p className="qv:m-0 qv:max-w-[265px] qv:text-[11px] qv:leading-relaxed qv:text-[#888b9e] qv:sm:max-w-none qv:sm:text-[13px]">Track staking, rewards, and gauge activity from one place.</p>
+          <p className="qv:m-0 qv:max-w-[265px] qv:text-[11px] qv:leading-relaxed qv:text-[#b0b3c3] qv:sm:max-w-none qv:sm:text-[13px]">Track staking, rewards, and gauge activity from one place.</p>
         </div>
       </header>
 
@@ -64,13 +64,13 @@ export default function Dashboard() {
             <span className="qv:block qv:text-xs qv:text-[#c1bbdf]">Portfolio overview</span>
             <span className="qv:inline-flex qv:items-center qv:gap-1.5 qv:rounded-full qv:border qv:border-[rgba(82,221,195,0.22)] qv:px-2 qv:py-1 qv:text-[9px] qv:font-bold qv:tracking-[0.08em] qv:text-[#8de5d4]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> TESTNET</span>
           </div>
-          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(219,217,235,0.61)] qv:sm:text-[11px]">Monad · chain 10143</span>
+          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">Monad · chain 10143</span>
         </div>
         <div className="qv:relative qv:z-10 qv:mt-7 qv:flex qv:flex-wrap qv:items-end qv:justify-between qv:gap-4">
           <div className="qv:min-w-0">
             <span className="qv:block qv:text-xs qv:text-[#c1bbdf]">Connected positions</span>
             <div className="qv:my-1.5 qv:text-[28px] qv:font-semibold qv:tracking-[-0.045em] qv:text-white qv:sm:text-[38px]">{isConnected ? "—" : "Connect wallet"}</div>
-            <span className="qv:block qv:text-[9px] qv:text-[rgba(219,217,235,0.61)] qv:sm:text-[11px]">Your Quevra staking and gauge positions</span>
+            <span className="qv:block qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">Your Quevra staking and gauge positions</span>
           </div>
           <div aria-hidden="true" className="qv:relative qv:hidden qv:h-[94px] qv:w-[115px] qv:items-center qv:justify-center qv:text-[rgba(238,233,255,0.78)] qv:sm:flex">
             <span className="qv:z-10 qv:text-[58px] qv:font-light qv:leading-none">Q</span>
@@ -91,7 +91,7 @@ export default function Dashboard() {
               <span className="qv:col-start-2 qv:row-span-2 qv:grid qv:size-7 qv:place-items-center qv:rounded-[10px] qv:border qv:border-[rgba(141,120,255,0.15)] qv:bg-[rgba(141,120,255,0.1)] qv:text-[#a99aff] qv:sm:size-8"><Icon size={17} /></span>
             </div>
             <strong className="qv:col-start-1 qv:row-start-2 qv:mt-1 qv:text-[21px] qv:font-semibold qv:tracking-[-0.03em] qv:text-[#f1f1f8] qv:sm:my-2 qv:sm:block qv:sm:text-[25px]">{value}</strong>
-            <div className="qv:col-span-2 qv:mt-2 qv:flex qv:min-w-0 qv:items-start qv:gap-1 qv:wrap-anywhere qv:text-[9px] qv:leading-[1.35] qv:text-[#85889b] qv:sm:mt-0 qv:sm:items-center qv:sm:text-[10px]">{trend === "up" ? <ArrowUpRight className="qv:shrink-0 qv:text-[#52ddc3]" size={14} /> : <Activity className="qv:shrink-0 qv:text-[#52ddc3]" size={14} />}{note}</div>
+            <div className="qv:col-span-2 qv:mt-2 qv:flex qv:min-w-0 qv:items-start qv:gap-1 qv:wrap-anywhere qv:text-[9px] qv:leading-[1.35] qv:text-[#aeb1c1] qv:sm:mt-0 qv:sm:items-center qv:sm:text-[10px]">{trend === "up" ? <ArrowUpRight className="qv:shrink-0 qv:text-[#52ddc3]" size={14} /> : <Activity className="qv:shrink-0 qv:text-[#52ddc3]" size={14} />}{note}</div>
           </article>
         ))}
       </section>
@@ -103,7 +103,7 @@ export default function Dashboard() {
             <span className="qv:rounded-md qv:border qv:border-white/[0.075] qv:px-[9px] qv:py-1.5 qv:text-[10px] qv:text-[#a3a5b5]">Your account</span>
           </div>
           <div aria-label="Activity chart will be available when wallet positions are indexed" className="qv:mt-5 qv:grid qv:min-w-0 qv:grid-cols-[28px_minmax(0,1fr)]" role="img">
-            <div className="qv:flex qv:flex-col qv:justify-between qv:pb-[22px] qv:text-[9px] qv:text-[#626577]"><span>—</span><span>—</span><span>—</span><span>—</span></div>
+            <div className="qv:flex qv:flex-col qv:justify-between qv:pb-[22px] qv:text-[9px] qv:text-[#9b9eb0]"><span>—</span><span>—</span><span>—</span><span>—</span></div>
             <div className="qv:relative qv:h-[174px]">
               <div className="qv:absolute qv:inset-x-0 qv:top-0 qv:border-t qv:border-dashed qv:border-white/[0.07]" />
               <div className="qv:absolute qv:inset-x-0 qv:top-1/3 qv:border-t qv:border-dashed qv:border-white/[0.07]" />
@@ -111,12 +111,12 @@ export default function Dashboard() {
               <div className="qv:absolute qv:inset-0 qv:flex qv:flex-col qv:items-center qv:justify-center qv:gap-2 qv:px-2 qv:text-center">
                 <span className={emptyIconClass}><Layers3 size={20} /></span>
                 <strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{isConnected ? "No indexed positions yet" : "Connect your wallet to get started"}</strong>
-                <span className="qv:text-[10px] qv:text-[#777a8c]">Your staking and reward history will appear here.</span>
+                <span className="qv:text-[10px] qv:text-[#a9acbd]">Your staking and reward history will appear here.</span>
               </div>
             </div>
-            <div className="qv:col-start-2 qv:flex qv:justify-between qv:pt-2 qv:text-[9px] qv:text-[#626577]"><span>30d ago</span><span>20d ago</span><span>10d ago</span><span>Today</span></div>
+            <div className="qv:col-start-2 qv:flex qv:justify-between qv:pt-2 qv:text-[9px] qv:text-[#9b9eb0]"><span>30d ago</span><span>20d ago</span><span>10d ago</span><span>Today</span></div>
           </div>
-          <div className="qv:mt-4 qv:flex qv:gap-4 qv:border-t qv:border-white/[0.075] qv:pt-3.5 qv:text-[10px] qv:text-[#85889a]">
+          <div className="qv:mt-4 qv:flex qv:gap-4 qv:border-t qv:border-white/[0.075] qv:pt-3.5 qv:text-[10px] qv:text-[#aeb1c1]">
             <span className="qv:flex qv:items-center qv:gap-1.5"><i className="qv:size-1.5 qv:rounded-full qv:bg-[#8d78ff]" /> Staked balance</span>
             <span className="qv:flex qv:items-center qv:gap-1.5"><i className="qv:size-1.5 qv:rounded-full qv:bg-[#52ddc3]" /> Rewards</span>
           </div>
@@ -144,7 +144,7 @@ export default function Dashboard() {
               }}
             >Create gauge</TransactionButton>
           </form>
-          <div className="qv:mt-[13px] qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:text-[#777a8c]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> Requires ownership of the veValidator NFT</div>
+          <div className="qv:mt-[13px] qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:text-[#a9acbd]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> Requires ownership of the veValidator NFT</div>
         </section>
       </div>
 
@@ -156,13 +156,13 @@ export default function Dashboard() {
         {recentTransactions.length > 0 ? recentTransactions.map((transaction) => (
           <div className="qv:flex qv:min-h-[66px] qv:min-w-0 qv:flex-wrap qv:items-center qv:gap-3 qv:border-t qv:border-white/[0.075] qv:py-2" key={transaction.hash}>
             <span className="qv:grid qv:size-[34px] qv:shrink-0 qv:place-items-center qv:rounded-[10px] qv:border qv:border-[rgba(82,221,195,0.14)] qv:bg-[rgba(82,221,195,0.08)] qv:text-[#52ddc3]"><Gauge size={16} /></span>
-            <div className="qv:flex qv:min-w-0 qv:flex-1 qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">Created validator gauge</strong><span className="qv:text-[10px] qv:text-[#777a8c]">veValidator #{transaction.tokenId} · Confirmed</span></div>
+            <div className="qv:flex qv:min-w-0 qv:flex-1 qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">Created validator gauge</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">veValidator #{transaction.tokenId} · Confirmed</span></div>
             <a className={`${explorerLinkClass} qv:min-w-0 qv:wrap-anywhere`} href={`${monadTestnet.blockExplorers.default.url}/tx/${transaction.hash}`} target="_blank" rel="noreferrer">{transaction.hash.slice(0, 6)}…{transaction.hash.slice(-4)} <ExternalLink size={12} /></a>
           </div>
         )) : (
           <div className="qv:mt-2.5 qv:flex qv:min-h-[81px] qv:items-center qv:gap-3 qv:border-t qv:border-white/[0.075]">
             <span className={`${emptyIconClass} qv:size-[34px] qv:rounded-[10px]`}><Activity size={18} /></span>
-            <div className="qv:flex qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{isConnected ? "No recent transactions found" : "Your activity will show here"}</strong><span className="qv:text-[10px] qv:text-[#777a8c]">{isConnected ? "Transactions from your Quevra positions will appear here." : "Connect your wallet to view your Quevra history."}</span></div>
+            <div className="qv:flex qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{isConnected ? "No recent transactions found" : "Your activity will show here"}</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">{isConnected ? "Transactions from your Quevra positions will appear here." : "Connect your wallet to view your Quevra history."}</span></div>
           </div>
         )}
       </section>

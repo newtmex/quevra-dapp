@@ -16,12 +16,12 @@ export default function MainMenu() {
       </div>
 
       <nav aria-label="Main navigation" className="qv:p-4">
-        <p className="qv:mb-2 qv:px-3 qv:pt-3 qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.14em] qv:text-[#77798d]">Network</p>
+        <p className="qv:mb-2 qv:px-3 qv:pt-3 qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.14em] qv:text-[#aeb0c0]">Network</p>
         {networkSections.map((section) => (
           <Link
             aria-current={section.active ? "page" : undefined}
             aria-disabled={!section.active || undefined}
-            className={`qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:px-3 qv:text-[13px] qv:font-medium qv:no-underline qv:transition-colors ${section.active ? "qv:bg-[rgba(141,120,255,0.12)] qv:text-[#c5bbff]" : "qv:text-[#85879a] qv:hover:bg-white/[0.04] qv:hover:text-white"}`}
+            className={`qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:px-3 qv:text-[13px] qv:font-medium qv:no-underline qv:transition-colors ${section.active ? "qv:bg-[rgba(141,120,255,0.12)] qv:text-[#c5bbff]" : "qv:text-[#b0b2c2] qv:hover:bg-white/[0.04] qv:hover:text-white"}`}
             href={section.href}
             key={section.label}
             tabIndex={section.active ? undefined : -1}

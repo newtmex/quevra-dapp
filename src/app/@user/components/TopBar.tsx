@@ -7,7 +7,7 @@ export default function TopBar() {
         <span className="qv:grid qv:size-[34px] qv:place-items-center qv:rounded-[11px] qv:bg-gradient-to-br qv:from-[#a291ff] qv:to-[#644ce1] qv:text-lg qv:font-bold qv:text-white qv:shadow-[0_5px_18px_rgba(114,91,238,0.35)]">Q</span>
         <div className="qv:grid qv:gap-0.5">
           <strong className="qv:text-[15px] qv:tracking-[-0.02em] qv:text-[#f2f2f8]">Quevra</strong>
-          <span className="qv:hidden qv:text-[11px] qv:text-[#888b9e] qv:sm:block">Protocol dashboard</span>
+          <span className="qv:hidden qv:text-[11px] qv:text-[#b0b3c3] qv:sm:block">Protocol dashboard</span>
         </div>
       </div>
       <div className="qv:flex qv:items-center qv:gap-3.5">
