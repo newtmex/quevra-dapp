@@ -34,6 +34,16 @@ const query = `
       gauge
       bribe
     }
+    NetworkValidator: Validator(limit: 100) {
+      id
+      tokenId
+      owner
+      operator
+      validatorId
+      vault
+      gauge
+      bribe
+    }
     _meta {
       chainId
       progressBlock
@@ -47,6 +57,7 @@ type EnvioResponse = {
     Activity?: unknown[];
     Position?: unknown[];
     Validator?: unknown[];
+    NetworkValidator?: unknown[];
     _meta?: { chainId: number; progressBlock: number; isReady: boolean };
   };
   errors?: Array<{ message?: string }>;
@@ -86,6 +97,7 @@ export async function GET(request: Request) {
       activities: payload.data.Activity ?? [],
       positions: payload.data.Position ?? [],
       validators: payload.data.Validator ?? [],
+      networkValidators: payload.data.NetworkValidator ?? [],
       indexing: payload.data._meta ?? null,
     }, { headers: { "cache-control": "no-store" } });
   } catch {

@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
-import { ArrowDownToLine, ArrowUpRight, Clock3, KeyRound, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
-import { formatEther, parseEther, type Address, type PublicClient } from "viem";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, Clock3, KeyRound, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
+import { decodeEventLog, formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
 import { monadTestnet } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
@@ -62,6 +64,7 @@ function amountLabel(value: string) {
 }
 
 export default function LockPage() {
+  const router = useRouter();
   const { address, chain } = useAccount();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
@@ -157,7 +160,22 @@ export default function LockPage() {
             {chain && chain.id !== monadTestnet.id && <p className="qv:text-[10px] qv:text-[#ffcf7a]">Switch to Monad Testnet to create a lock.</p>}
             <TransactionButton
               disabled={!canCreate}
-              onComplete={() => { setAmount(""); setFormError(null); void refresh(); }}
+              onComplete={(results) => {
+                setAmount("");
+                setFormError(null);
+                void refresh();
+                let tokenId: string | undefined;
+                for (const result of results) {
+                  for (const log of result.receipt?.logs ?? []) {
+                    if (!escrow?.address || log.address.toLowerCase() !== escrow.address.toLowerCase()) continue;
+                    try {
+                      const event = decodeEventLog({ abi: escrow.abi, data: log.data, topics: log.topics }) as { eventName: string; args: { tokenId?: bigint } };
+                      if (event.eventName === "LockCreated" && event.args.tokenId !== undefined) tokenId = event.args.tokenId.toString();
+                    } catch { /* This receipt log belongs to a different VeMON event. */ }
+                  }
+                }
+                router.push(tokenId ? `/stake?tokenId=${tokenId}` : "/stake");
+              }}
               onError={(message) => setFormError(message)}
               steps={createSteps}
               className="qv:inline-flex qv:h-11 qv:w-full qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-4 qv:text-[11px] qv:font-semibold qv:text-white qv:shadow-[0_8px_20px_rgba(112,88,233,0.2)] qv:transition qv:hover:brightness-110 qv:disabled:cursor-not-allowed qv:disabled:opacity-[0.46]"
@@ -188,6 +206,7 @@ export default function LockPage() {
                         </div>
                         {actionError && <p className="qv:mt-3 qv:text-[10px] qv:text-[#ff9caa]">{actionError}</p>}
                         <div className="qv:mt-4 qv:flex qv:flex-wrap qv:gap-2">
+                          <Link className="qv:inline-flex qv:h-9 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-white qv:no-underline qv:hover:brightness-110" href={`/stake?tokenId=${position.tokenId}`}>Stake this position <ArrowRight size={13} /></Link>
                           {position.permanent
                             ? <TransactionButton onComplete={() => { setActionError(null); void refresh(); }} onError={(message) => setActionError(message)} steps={actionSteps(position.tokenId, "unlockPermanent", "Convert to finite lock")} className="qv:inline-flex qv:h-9 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-medium qv:text-[#d7d3eb] qv:hover:bg-white/[0.07] qv:disabled:opacity-50"><UnlockKeyhole size={13} /> Convert to finite</TransactionButton>
                             : <TransactionButton onComplete={() => { setActionError(null); void refresh(); }} onError={(message) => setActionError(message)} steps={actionSteps(position.tokenId, "lockPermanent", "Make lock permanent")} className="qv:inline-flex qv:h-9 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-medium qv:text-[#d7d3eb] qv:hover:bg-white/[0.07] qv:disabled:opacity-50"><LockKeyhole size={13} /> Make permanent</TransactionButton>}

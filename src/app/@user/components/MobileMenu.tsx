@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { KeyRound, LayoutDashboard, Menu, X } from "lucide-react";
+import { KeyRound, Landmark, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { networkSections } from "./MainMenu";
 
@@ -37,7 +37,7 @@ export default function MobileMenu() {
               key={section.label}
               onClick={() => setOpen(false)}
             >
-              {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
+              {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
               <span>{section.label}</span>
             </Link>
           ))}
