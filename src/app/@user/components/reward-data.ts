@@ -2,9 +2,9 @@ import { decodeFunctionResult, encodeFunctionData, formatUnits, parseAbi, type A
 import { erc20Abi } from "viem";
 import { getContractConfig } from "@/contracts/shared";
 import { protocolChain } from "@/lib/web3";
-import type { HolderValidator } from "@/lib/rpc-data";
-export type { HolderPosition, HolderValidator, HolderDirectory } from "@/lib/rpc-data";
-export { fetchHolderDirectory } from "@/lib/rpc-data";
+import type { HolderValidator } from "@/lib/indexer-data";
+export type { HolderPosition, HolderValidator, HolderDirectory } from "@/lib/indexer-data";
+export { fetchHolderDirectory } from "@/lib/indexer-data";
 export type IncentiveReward = {
   bribe: Address;
   validator: HolderValidator;

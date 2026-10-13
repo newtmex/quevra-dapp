@@ -30,7 +30,7 @@ import {
 } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
 import { protocolChain } from "@/lib/web3";
-import { fetchHolderDirectory, type HolderValidator } from "@/lib/rpc-data";
+import { fetchHolderDirectory, type HolderValidator } from "@/lib/indexer-data";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeContractWriteStep, makeTokenApprovalStep } from "@/lib/tx-flow/steps";
 
@@ -622,7 +622,7 @@ export default function MyValidatorsPage() {
   const metadata = getDeploymentMetadata(protocolChain.id);
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
-    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
+    queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 20_000,
   });

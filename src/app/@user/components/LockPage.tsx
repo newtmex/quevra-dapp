@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowRight, ArrowUpRight, Clock3, KeyRound, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
 import { decodeEventLog, formatEther, parseEther, type Address } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
-import { fetchHolderDirectory } from "@/lib/rpc-data";
+import { fetchHolderDirectory } from "@/lib/indexer-data";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
@@ -37,7 +37,7 @@ export default function LockPage() {
   const queryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
   const positionsQuery = useQuery({
     queryKey,
-    queryFn: async () => (await fetchHolderDirectory(publicClient!, address as Address)).positions,
+    queryFn: async () => (await fetchHolderDirectory(address as Address)).positions,
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id && escrow?.address),
     refetchInterval: 12_000,
   });

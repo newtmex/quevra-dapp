@@ -7,7 +7,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowRight, Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Wallet } from "lucide-react";
 import { formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/rpc-data";
+import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/indexer-data";
 import { estimateGaugeWeight, readCurrentCycle } from "@/lib/protocol-time";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
@@ -108,7 +108,7 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
   const directoryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
   const directoryQuery = useQuery({
     queryKey: directoryKey,
-    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
+    queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });

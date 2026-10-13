@@ -75,7 +75,7 @@ export default function IncentivesPage() {
   const [message, setMessage] = useState<string | null>(null);
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
-    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
+    queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
   });

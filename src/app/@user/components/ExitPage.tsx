@@ -84,7 +84,7 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
   const [message, setMessage] = useState<string | null>(null);
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
-    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
+    queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
