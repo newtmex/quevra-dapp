@@ -41,16 +41,9 @@ export type WalletActivity = {
 type CallResult = { status: "success"; result: unknown } | { status: "failure"; error: Error };
 
 const transferEvent = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
-const vaultRegisteredEvent = parseAbiItem("event VaultRegistered(uint256 indexed tokenId, address indexed vault, address operator)");
 const zeroAddress = "0x0000000000000000000000000000000000000000" as Address;
-const defaultVeMonDeploymentBlock = BigInt(70_276_784);
-const defaultVeValidatorDeploymentBlock = BigInt(70_276_906);
-const logBlockSpan = BigInt(100_000);
-
-function deploymentBlock(defaultBlock: bigint) {
-  const configured = process.env.NEXT_PUBLIC_QUEVRA_DEPLOYMENT_BLOCK;
-  return configured && /^\d+$/.test(configured) ? BigInt(configured) : defaultBlock;
-}
+const logBlockSpan = BigInt(100);
+const multicallBatchSize = 200;
 
 async function getLogsInChunks<T extends { fromBlock: bigint; toBlock: bigint }>(
   publicClient: PublicClient,
@@ -70,72 +63,56 @@ async function getLogsInChunks<T extends { fromBlock: bigint; toBlock: bigint }>
   return (await Promise.all(pages)).flat();
 }
 
-async function walletTokenIds(publicClient: PublicClient, address: Address, wallet: Address, fromBlock: bigint, latestBlock: bigint) {
-  const [received, sent] = await Promise.all([
-    getLogsInChunks(publicClient, fromBlock, latestBlock, {
-      address,
-      event: transferEvent,
-      args: { to: wallet },
-    }),
-    getLogsInChunks(publicClient, fromBlock, latestBlock, {
-      address,
-      event: transferEvent,
-      args: { from: wallet },
-    }),
-  ]);
-  const events = Array.from(new Map([...received, ...sent].map((log) => [`${log.transactionHash}-${log.logIndex}`, log])).values()).sort((a, b) => {
-    const blockDelta = (a.blockNumber ?? BigInt(0)) - (b.blockNumber ?? BigInt(0));
-    return blockDelta === BigInt(0) ? Number(a.logIndex ?? 0) - Number(b.logIndex ?? 0) : Number(blockDelta);
-  });
-  const owned = new Set<string>();
-  for (const log of events) {
-    const tokenId = (log as typeof log & { args: { tokenId: bigint } }).args.tokenId.toString();
-    const { from, to } = (log as typeof log & { args: { from: Address; to: Address } }).args;
-    if (to.toLowerCase() === wallet.toLowerCase()) owned.add(tokenId);
-    if (from.toLowerCase() === wallet.toLowerCase()) owned.delete(tokenId);
+async function multicallInBatches(publicClient: PublicClient, contracts: Array<Record<string, unknown>>) {
+  const batches: CallResult[][] = [];
+  for (let start = 0; start < contracts.length; start += multicallBatchSize) {
+    const results = await publicClient.multicall({
+      contracts: contracts.slice(start, start + multicallBatchSize) as never,
+      allowFailure: true,
+    }) as unknown as CallResult[];
+    batches.push(results);
   }
-  return Array.from(owned, BigInt);
+  return batches.flat();
 }
 
 export async function fetchHolderDirectory(publicClient: PublicClient, wallet: Address): Promise<HolderDirectory> {
   const veMon = getContractConfig(monadTestnet.id, "VeMON");
   const veValidator = getContractConfig(monadTestnet.id, "VeValidator");
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
-  if (!veMon || !veValidator || !controller) throw new Error("Quevra contracts are not configured on Monad Testnet.");
+  if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
 
-  const latestBlock = await publicClient.getBlockNumber();
-  const [positionIds, validatorIds, registrations] = await Promise.all([
-    walletTokenIds(publicClient, veMon.address, wallet, deploymentBlock(defaultVeMonDeploymentBlock), latestBlock),
-    walletTokenIds(publicClient, veValidator.address, wallet, deploymentBlock(defaultVeValidatorDeploymentBlock), latestBlock),
-    getLogsInChunks(publicClient, deploymentBlock(defaultVeValidatorDeploymentBlock), latestBlock, {
-      address: controller.address,
-      event: vaultRegisteredEvent,
-    }),
+  const [veMonNextId, veValidatorNextId] = await Promise.all([
+    publicClient.readContract({ address: veMon.address, abi: veMon.abi, functionName: "nextId" }) as Promise<bigint>,
+    publicClient.readContract({ address: veValidator.address, abi: veValidator.abi, functionName: "nextId" }) as Promise<bigint>,
   ]);
-
-  const positionCalls = positionIds.flatMap((tokenId) => [
+  const positionIds = Array.from({ length: Number(veMonNextId - BigInt(1)) }, (_, index) => BigInt(index + 1));
+  const validatorIds = Array.from({ length: Number(veValidatorNextId - BigInt(1)) }, (_, index) => BigInt(index + 1));
+  const [positionOwners, validatorData] = await Promise.all([
+    multicallInBatches(publicClient, positionIds.map((tokenId) => ({
+      address: veMon.address, abi: veMon.abi, functionName: "ownerOf", args: [tokenId],
+    }))),
+    multicallInBatches(publicClient, validatorIds.flatMap((tokenId) => [
+      { address: veValidator.address, abi: veValidator.abi, functionName: "ownerOf", args: [tokenId] },
+      { address: veValidator.address, abi: veValidator.abi, functionName: "validatorPosition", args: [tokenId] },
+    ])),
+  ]);
+  const ownedPositionIds = positionIds.filter((_, index) => {
+    const owner = positionOwners[index];
+    return owner?.status === "success" && (owner.result as Address).toLowerCase() === wallet.toLowerCase();
+  });
+  const positionCalls = ownedPositionIds.flatMap((tokenId) => [
     { address: veMon.address, abi: veMon.abi, functionName: "locked", args: [tokenId] },
     { address: veMon.address, abi: veMon.abi, functionName: "votingPowerOf", args: [tokenId] },
-    { address: veMon.address, abi: veMon.abi, functionName: "ownerOf", args: [tokenId] },
   ]);
-  const [positionResults, ownedValidatorOwners] = await Promise.all([
-    positionCalls.length ? publicClient.multicall({ contracts: positionCalls as never, allowFailure: true }) as unknown as Promise<CallResult[]> : Promise.resolve([] as CallResult[]),
-    validatorIds.length ? publicClient.multicall({
-      contracts: validatorIds.map((tokenId) => ({ address: veValidator.address, abi: veValidator.abi, functionName: "ownerOf", args: [tokenId] })) as never,
-      allowFailure: true,
-    }) as unknown as Promise<CallResult[]> : Promise.resolve([] as CallResult[]),
-  ]);
+  const positionResults = await multicallInBatches(publicClient, positionCalls);
   const positions: HolderPosition[] = [];
-  for (let index = 0; index < positionIds.length; index += 1) {
-    const lock = positionResults[index * 3];
-    const votingPower = positionResults[index * 3 + 1];
-    const owner = positionResults[index * 3 + 2];
-    if (lock?.status !== "success" || owner?.status !== "success") continue;
+  for (let index = 0; index < ownedPositionIds.length; index += 1) {
+    const lock = positionResults[index * 2];
+    const votingPower = positionResults[index * 2 + 1];
+    if (lock?.status !== "success") continue;
     const [amount, end, permanent] = lock.result as readonly [bigint, bigint, boolean, bigint];
-    if ((owner.result as Address).toLowerCase() !== wallet.toLowerCase()) continue;
     positions.push({
-      id: `ve-mon-${positionIds[index]}`,
-      tokenId: positionIds[index].toString(),
+      id: `ve-mon-${ownedPositionIds[index]}`,
+      tokenId: ownedPositionIds[index].toString(),
       owner: wallet,
       kind: "VE_MON",
       amount: amount.toString(),
@@ -145,40 +122,18 @@ export async function fetchHolderDirectory(publicClient: PublicClient, wallet: A
     });
   }
 
-  const currentOwnerById = new Map<string, Address>();
-  validatorIds.forEach((tokenId, index) => {
-    const owner = ownedValidatorOwners[index];
-    if (owner?.status === "success") currentOwnerById.set(tokenId.toString(), owner.result as Address);
-  });
-  const ownedValidatorIdSet = new Set(validatorIds.map(String));
-  const registrationByToken = new Map<string, { vault: Address; operator: Address }>();
-  for (const log of registrations) {
-    const args = (log as typeof log & { args: { tokenId: bigint; vault: Address; operator: Address } }).args;
-    registrationByToken.set(args.tokenId.toString(), { vault: args.vault, operator: args.operator });
-  }
-  const validatorTokens = new Set([...ownedValidatorIdSet, ...registrationByToken.keys()]);
-  const allValidatorCalls = Array.from(validatorTokens, (tokenId) => ({
-    address: veValidator.address,
-    abi: veValidator.abi,
-    functionName: "validatorPosition",
-    args: [BigInt(tokenId)],
-  }));
-  const allValidatorResults = allValidatorCalls.length
-    ? await publicClient.multicall({ contracts: allValidatorCalls as never, allowFailure: true }) as unknown as CallResult[]
-    : [] as CallResult[];
   const validators: HolderValidator[] = [];
-  Array.from(validatorTokens).forEach((tokenId, index) => {
-    const position = allValidatorResults[index];
-    if (position?.status !== "success") return;
+  validatorIds.forEach((tokenId, index) => {
+    const owner = validatorData[index * 2];
+    const position = validatorData[index * 2 + 1];
+    if (owner?.status !== "success" || position?.status !== "success") return;
     const [validatorId, operator, vault, gauge, bribe] = position.result as readonly [bigint, Address, Address, Address, Address];
     if (vault === zeroAddress) return;
-    const owner = currentOwnerById.get(tokenId) ?? operator;
-    const owned = owner.toLowerCase() === wallet.toLowerCase();
-    if (!owned && !registrationByToken.has(tokenId)) return;
+    const currentOwner = owner.result as Address;
     validators.push({
       id: `validator-${tokenId}`,
-      tokenId,
-      owner,
+      tokenId: tokenId.toString(),
+      owner: currentOwner,
       operator,
       validatorId: validatorId > BigInt(0) ? validatorId.toString() : null,
       vault,
@@ -194,9 +149,10 @@ export async function fetchWalletActivity(publicClient: PublicClient, wallet: Ad
   const veValidator = getContractConfig(monadTestnet.id, "VeValidator");
   if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
   const latestBlock = await publicClient.getBlockNumber();
+  const fromBlock = latestBlock >= logBlockSpan ? latestBlock - logBlockSpan + BigInt(1) : BigInt(0);
   const [monLogs, validatorLogs] = await Promise.all([
-    walletTokenActivity(publicClient, veMon.address, wallet, deploymentBlock(defaultVeMonDeploymentBlock), latestBlock),
-    walletTokenActivity(publicClient, veValidator.address, wallet, deploymentBlock(defaultVeValidatorDeploymentBlock), latestBlock),
+    walletTokenActivity(publicClient, veMon.address, wallet, fromBlock, latestBlock),
+    walletTokenActivity(publicClient, veValidator.address, wallet, fromBlock, latestBlock),
   ]);
   return [...monLogs, ...validatorLogs].sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber)) || b.logIndex - a.logIndex).slice(0, 25);
 }
