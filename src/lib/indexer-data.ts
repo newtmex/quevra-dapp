@@ -1,4 +1,13 @@
 import type { Address } from "viem";
+import type { Query } from "@tanstack/react-query";
+
+/** Retain a successful result while the same wallet's query refreshes or changes scope. */
+export function keepPreviousWalletData<T>(wallet: Address | undefined, walletKeyIndex = 1) {
+  return (previousData: T | undefined, previousQuery: Query<T> | undefined) => {
+    const previousWallet = previousQuery?.queryKey[walletKeyIndex];
+    return wallet && previousWallet === wallet.toLowerCase() ? previousData : undefined;
+  };
+}
 
 export type HolderPosition = {
   id: string;

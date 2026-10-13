@@ -12,6 +12,7 @@ import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeContractWriteStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory, getIncentiveTokenList, readIncentiveRewards } from "./reward-data";
+import { keepPreviousWalletData } from "@/lib/indexer-data";
 
 type ExitState = {
   amount: bigint;
@@ -87,6 +88,7 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const positions = directoryQuery.data?.positions ?? [];
   const validators = directoryQuery.data?.validators ?? [];
@@ -103,12 +105,14 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
     queryFn: () => readExitState(publicClient!, BigInt(selectedTokenId), vaults),
     enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === protocolChain.id),
     refetchInterval: 12_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const incentiveQuery = useQuery({
     queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.bribe).join(",")],
     queryFn: () => readIncentiveRewards(publicClient!, validators, BigInt(selectedTokenId)),
     enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const state = stateQuery.data;
   const pendingIncentives = (incentiveQuery.data ?? []).filter((reward) => reward.amount > BigInt(0));

@@ -30,7 +30,7 @@ import {
 } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
 import { protocolChain } from "@/lib/web3";
-import { fetchHolderDirectory, type HolderValidator } from "@/lib/indexer-data";
+import { fetchHolderDirectory, keepPreviousWalletData, type HolderValidator } from "@/lib/indexer-data";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeContractWriteStep, makeTokenApprovalStep } from "@/lib/tx-flow/steps";
 
@@ -625,6 +625,7 @@ export default function MyValidatorsPage() {
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 20_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const validators = (directoryQuery.data?.validators ?? []).filter(
     (validator) => validator.owner.toLowerCase() === address?.toLowerCase(),
@@ -638,6 +639,7 @@ export default function MyValidatorsPage() {
     queryFn: () => readValidatorStatuses(publicClient!, validators, address as Address),
     enabled: Boolean(publicClient && address && chain?.id === protocolChain.id && validators.length),
     refetchInterval: 20_000,
+    placeholderData: keepPreviousWalletData(address),
   });
 
   async function refresh() {

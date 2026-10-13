@@ -12,6 +12,7 @@ import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeTokenApprovalStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory } from "./reward-data";
+import { keepPreviousWalletData } from "@/lib/indexer-data";
 
 type FundingState = {
   symbol: string;
@@ -78,6 +79,7 @@ export default function IncentivesPage() {
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const validators = (directoryQuery.data?.validators ?? []).filter((validator) => validator.bribe);
   const selectedValidator = validators.find((validator) => validator.id === selectedValidatorId) ?? validators[0];
@@ -96,6 +98,7 @@ export default function IncentivesPage() {
     queryFn: () => readFundingState(publicClient!, selectedValidator!.bribe!, token!, address as Address),
     enabled: Boolean(publicClient && address && chain?.id === protocolChain.id && selectedValidator?.bribe && token),
     refetchInterval: 20_000,
+    placeholderData: keepPreviousWalletData(address, 3),
   });
   const state = fundingQuery.data;
   const amountValid = Boolean(amount.trim() && /^(?:\d+)(?:\.\d+)?$/.test(amount.trim()));

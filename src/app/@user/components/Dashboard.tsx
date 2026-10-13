@@ -8,7 +8,7 @@ import { Activity, ArrowRight, ArrowUpRight, Check, ExternalLink, Gauge, Plus, S
 import { formatEther, type Address, type Hex } from "viem";
 import { explorerTxUrl, protocolChain } from "@/lib/web3";
 import { getContractConfig } from "@/contracts/shared";
-import { fetchHolderDirectory, fetchWalletActivity, type WalletActivity } from "@/lib/indexer-data";
+import { fetchHolderDirectory, fetchWalletActivity, keepPreviousWalletData, type WalletActivity } from "@/lib/indexer-data";
 import { createValidatorSigningRequest, submitValidatedRegistration, validateRegistrationArtifact, validatorRegistrationCall, type ValidatorRegistrationArtifact, type ValidatorSigningRequest } from "@/lib/validator-signing";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 import TransactionButton, { type TransactionButtonHandle } from "@/lib/tx-flow/TransactionButton";
@@ -43,12 +43,14 @@ export default function Dashboard() {
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const activityQuery = useQuery({
     queryKey: ["quevra-activity", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchWalletActivity(address as Address),
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const indexedVeMonPositions = directoryQuery.data?.positions ?? [];
   const indexedValidators = directoryQuery.data?.validators.filter((validator) => validator.owner.toLowerCase() === address?.toLowerCase()) ?? [];

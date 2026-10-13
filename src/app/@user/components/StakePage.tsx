@@ -7,7 +7,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowRight, Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Wallet } from "lucide-react";
 import { formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/indexer-data";
+import { fetchHolderDirectory, keepPreviousWalletData, type HolderPosition, type HolderValidator } from "@/lib/indexer-data";
 import { estimateGaugeWeight, readCurrentCycle } from "@/lib/protocol-time";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
@@ -111,6 +111,7 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const positions = directoryQuery.data?.positions ?? [];
   const validators = directoryQuery.data?.validators ?? [];
@@ -128,6 +129,7 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
     ),
     enabled: Boolean(address && publicClient && selectedPosition && controller?.address && escrow?.address && selectedTokenId),
     refetchInterval: 12_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const stakeState = stateQuery.data;
 

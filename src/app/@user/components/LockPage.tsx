@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowRight, ArrowUpRight, Clock3, KeyRound, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
 import { decodeEventLog, formatEther, parseEther, type Address } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
-import { fetchHolderDirectory } from "@/lib/indexer-data";
+import { fetchHolderDirectory, keepPreviousWalletData } from "@/lib/indexer-data";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
@@ -40,6 +40,7 @@ export default function LockPage() {
     queryFn: async () => (await fetchHolderDirectory(address as Address)).positions,
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id && escrow?.address),
     refetchInterval: 12_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const positions = positionsQuery.data ?? [];
   const totalLocked = useMemo(() => positions.reduce((sum, position) => sum + BigInt(position.amount), BigInt(0)), [positions]);

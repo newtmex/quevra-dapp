@@ -10,6 +10,7 @@ import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeContractWriteStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory, formatTokenAmount, getIncentiveTokenList, readIncentiveRewards, readNativeRewards } from "./reward-data";
+import { keepPreviousWalletData } from "@/lib/indexer-data";
 
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const field = "qv:h-10 qv:w-full qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[11px] qv:text-[#f0f0f6] qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
@@ -27,6 +28,7 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
     queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const positions = directoryQuery.data?.positions ?? [];
   const validators = directoryQuery.data?.validators ?? [];
@@ -43,12 +45,14 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
     queryFn: () => readNativeRewards(publicClient!, BigInt(selectedTokenId), validators),
     enabled: Boolean(address && publicClient && selectedPosition && chain?.id === protocolChain.id),
     refetchInterval: 20_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const incentiveQuery = useQuery({
     queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.bribe).join(",")],
     queryFn: () => readIncentiveRewards(publicClient!, validators, BigInt(selectedTokenId)),
     enabled: Boolean(address && publicClient && selectedPosition && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
+    placeholderData: keepPreviousWalletData(address),
   });
   const controller = getContractConfig(protocolChain.id, "StakingController");
   const claimableIncentives = (incentiveQuery.data ?? []).filter((reward) => reward.amount > BigInt(0));
