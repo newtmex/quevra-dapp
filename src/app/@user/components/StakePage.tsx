@@ -7,47 +7,19 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowRight, Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Wallet } from "lucide-react";
 import { formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
+import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/rpc-data";
 import { monadTestnet } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 
-type Position = {
-  id: string;
-  tokenId: string;
-  owner: Address | null;
-  kind: string;
-  amount: string;
-  permanent: boolean;
-};
-type Validator = {
-  id: string;
-  tokenId: string;
-  owner: Address;
-  operator: Address | null;
-  validatorId: string | null;
-  vault: Address | null;
-  gauge: Address | null;
-  bribe: Address | null;
-};
-type IndexerPayload = { positions: Position[]; networkValidators: Validator[] };
+type Position = HolderPosition;
+type Validator = HolderValidator;
 type ValidatorStakeState = { active: boolean; intent: bigint; allocation: bigint; pending: bigint };
 type StakeState = { liquid: bigint; principal: bigint; lastCycle: bigint; validators: Record<string, ValidatorStakeState> };
 
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const field = "qv:h-10 qv:w-full qv:min-w-0 qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[11px] qv:text-[#f0f0f6] qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
 const input = "qv:h-9 qv:w-[112px] qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-2.5 qv:text-right qv:text-[11px] qv:text-white qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
-
-async function fetchStakeData(wallet: Address) {
-  const response = await fetch(`/api/indexer?wallet=${encodeURIComponent(wallet)}`, { cache: "no-store" });
-  const payload = await response.json() as IndexerPayload | { error?: string };
-  if (!response.ok || !("positions" in payload) || !Array.isArray(payload.networkValidators)) {
-    throw new Error("Could not load positions and validator vaults from the Quevra index.");
-  }
-  return {
-    positions: payload.positions.filter((position) => position.kind === "VE_MON"),
-    validators: payload.networkValidators.filter((validator) => validator.vault),
-  };
-}
 
 async function readStakeState(
   publicClient: PublicClient,
@@ -114,15 +86,15 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
   const initializedPosition = useRef("");
   const escrow = getContractConfig(monadTestnet.id, "VeMON");
   const controller = getContractConfig(monadTestnet.id, "StakingController");
-  const indexKey = ["stake-directory", address?.toLowerCase(), chain?.id];
-  const indexQuery = useQuery({
-    queryKey: indexKey,
-    queryFn: () => fetchStakeData(address as Address),
+  const directoryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
+  const directoryQuery = useQuery({
+    queryKey: directoryKey,
+    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
     enabled: Boolean(address && chain?.id === monadTestnet.id),
     refetchInterval: 15_000,
   });
-  const positions = indexQuery.data?.positions ?? [];
-  const validators = indexQuery.data?.validators ?? [];
+  const positions = directoryQuery.data?.positions ?? [];
+  const validators = directoryQuery.data?.validators ?? [];
   const selectedPosition = positions.find((position) => position.tokenId === selectedTokenId);
   const stateQuery = useQuery({
     queryKey: ["stake-position-state", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.vault?.toLowerCase()).join(",")],
@@ -188,9 +160,9 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
 
   async function refresh() {
     await Promise.all([
-      indexQuery.refetch(),
+      directoryQuery.refetch(),
       queryClient.invalidateQueries({ queryKey: ["stake-position-state", address?.toLowerCase(), selectedTokenId] }),
-      queryClient.invalidateQueries({ queryKey: ["quevra-indexer", address?.toLowerCase()] }),
+      queryClient.invalidateQueries({ queryKey: ["quevra-directory", address?.toLowerCase()] }),
     ]);
   }
 
@@ -210,9 +182,9 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
 
       {!address ? <div className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={17} className="qv:text-[#a99aff]" />Connect a wallet to choose a veMON position and validator allocation.</div>
         : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to stake.</div>
-          : indexQuery.isPending ? <div className={`${panel} qv:p-8 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading positions and validator vaults…</div>
-            : indexQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{indexQuery.error.message}</div>
-              : initialTokenId && !selectedPosition ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><LoaderCircle size={19} className="qv:animate-spin qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">Your new lock is syncing</p><p className="qv:mt-1 qv:max-w-[300px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">The lock transaction is confirmed. Waiting for the indexer to list position #{initialTokenId} so you can allocate it.</p></div>
+          : directoryQuery.isPending ? <div className={`${panel} qv:p-8 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading positions and validator vaults…</div>
+            : directoryQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
+              : initialTokenId && !selectedPosition ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><LoaderCircle size={19} className="qv:animate-spin qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">Your new lock is syncing</p><p className="qv:mt-1 qv:max-w-[300px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">The lock transaction is confirmed. Waiting for Monad RPC to return position #{initialTokenId}.</p></div>
                 : positions.length === 0 ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><Wallet size={20} className="qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">Create a veMON position first</p><p className="qv:mt-1 qv:text-[10px] qv:text-[#999bad]">Your locked MON positions will appear here.</p><Link className="qv:mt-4 qv:inline-flex qv:items-center qv:gap-2 qv:text-[11px] qv:font-semibold qv:text-[#bdb2ff] qv:no-underline" href="/lock">Go to lock MON <ArrowRight size={13} /></Link></div>
                 : <div className="qv:grid qv:items-start qv:gap-5 qv:xl:grid-cols-[minmax(0,0.74fr)_minmax(0,1.26fr)]">
                   <section className={`${panel} qv:p-4 qv:sm:p-5`}>

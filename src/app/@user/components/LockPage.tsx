@@ -6,58 +6,15 @@ import { useAccount, usePublicClient } from "wagmi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowRight, ArrowUpRight, Clock3, KeyRound, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
-import { decodeEventLog, formatEther, parseEther, type Address, type PublicClient } from "viem";
+import { decodeEventLog, formatEther, parseEther, type Address } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
+import { fetchHolderDirectory } from "@/lib/rpc-data";
 import { monadTestnet } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 
-type VeMonPosition = {
-  id: string;
-  tokenId: string;
-  owner: Address | null;
-  kind: string;
-  amount: string;
-  unlockEpoch: string | null;
-  permanent: boolean;
-  votingPower?: string;
-};
-
-type IndexerPayload = { positions: VeMonPosition[] };
-
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const field = "qv:h-11 qv:w-full qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[12px] qv:text-[#f0f0f6] qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
-
-async function fetchPositions(wallet: Address, publicClient: PublicClient, escrowAddress: Address, escrowAbi: readonly unknown[]) {
-  const response = await fetch(`/api/indexer?wallet=${encodeURIComponent(wallet)}`, { cache: "no-store" });
-  const payload = await response.json() as IndexerPayload | { error?: string };
-  if (!response.ok || !("positions" in payload)) throw new Error("Could not load your veMON positions.");
-  const positions = payload.positions.filter((position) => position.kind === "VE_MON");
-  if (positions.length === 0) return positions;
-
-  // veMON principal and voting power are read from the deployed escrow so the cards
-  // reflect the current contract state while the indexer supplies the owned token IDs.
-  const calls = positions.flatMap((position) => [
-    { address: escrowAddress, abi: escrowAbi, functionName: "locked", args: [BigInt(position.tokenId)] },
-    { address: escrowAddress, abi: escrowAbi, functionName: "votingPowerOf", args: [BigInt(position.tokenId)] },
-  ]);
-  const results = await publicClient.multicall({ contracts: calls as never, allowFailure: true }) as unknown as Array<
-    { status: "success"; result: unknown } | { status: "failure"; error: Error }
-  >;
-  return positions.map((position, index) => {
-    const lockResult = results[index * 2];
-    const powerResult = results[index * 2 + 1];
-    if (lockResult.status !== "success") return position;
-    const [amount, end, permanent] = lockResult.result as readonly [bigint, bigint, boolean, bigint];
-    return {
-      ...position,
-      amount: amount.toString(),
-      unlockEpoch: permanent ? null : end.toString(),
-      permanent,
-      votingPower: powerResult.status === "success" ? (powerResult.result as bigint).toString() : undefined,
-    };
-  });
-}
 
 function amountLabel(value: string) {
   return Number(formatEther(BigInt(value))).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -75,10 +32,10 @@ export default function LockPage() {
   const escrow = getContractConfig(monadTestnet.id, "VeMON");
   const metadata = getDeploymentMetadata(monadTestnet.id);
   const maxCycles = Number(metadata?.config.maxLockCycles ?? 4);
-  const queryKey = ["ve-mon-positions", address?.toLowerCase(), chain?.id];
+  const queryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
   const positionsQuery = useQuery({
     queryKey,
-    queryFn: () => fetchPositions(address as Address, publicClient!, escrow!.address, escrow!.abi),
+    queryFn: async () => (await fetchHolderDirectory(publicClient!, address as Address)).positions,
     enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id && escrow?.address),
     refetchInterval: 12_000,
   });
@@ -102,7 +59,7 @@ export default function LockPage() {
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey }),
-      queryClient.invalidateQueries({ queryKey: ["quevra-indexer", address?.toLowerCase()] }),
+      queryClient.invalidateQueries({ queryKey: ["quevra-directory", address?.toLowerCase()] }),
     ]);
   }
 

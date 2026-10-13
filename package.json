@@ -7,7 +7,7 @@
   "description": "Quevra user-facing dapp",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "contracts:sync": "node scripts/sync-contracts.mjs",
     "typecheck": "tsc --noEmit",

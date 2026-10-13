@@ -92,8 +92,8 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
   const [selectedTokenId, setSelectedTokenId] = useState(initialTokenId ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const directoryQuery = useQuery({
-    queryKey: ["exit-directory", address?.toLowerCase(), chain?.id],
-    queryFn: () => fetchHolderDirectory(address as Address),
+    queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
+    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
     enabled: Boolean(address && chain?.id === monadTestnet.id),
     refetchInterval: 15_000,
   });
@@ -170,8 +170,7 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
       queryClient.invalidateQueries({ queryKey: ["native-rewards", address?.toLowerCase(), selectedTokenId] }),
       queryClient.invalidateQueries({ queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId] }),
       queryClient.invalidateQueries({ queryKey: ["stake-position-state", address?.toLowerCase(), selectedTokenId] }),
-      queryClient.invalidateQueries({ queryKey: ["ve-mon-positions", address?.toLowerCase()] }),
-      queryClient.invalidateQueries({ queryKey: ["quevra-indexer", address?.toLowerCase()] }),
+      queryClient.invalidateQueries({ queryKey: ["quevra-directory", address?.toLowerCase()] }),
     ]);
   }
 

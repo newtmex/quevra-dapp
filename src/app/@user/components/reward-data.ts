@@ -2,29 +2,9 @@ import { decodeFunctionResult, encodeFunctionData, formatUnits, parseAbi, type A
 import { erc20Abi } from "viem";
 import { getContractConfig } from "@/contracts/shared";
 import { monadTestnet } from "@/lib/web3";
-
-export type HolderPosition = {
-  id: string;
-  tokenId: string;
-  owner: Address | null;
-  kind: string;
-  amount: string;
-  unlockEpoch: string | null;
-  permanent: boolean;
-};
-
-export type HolderValidator = {
-  id: string;
-  tokenId: string;
-  owner: Address;
-  operator: Address | null;
-  validatorId: string | null;
-  vault: Address | null;
-  gauge: Address | null;
-  bribe: Address | null;
-};
-
-export type HolderDirectory = { positions: HolderPosition[]; validators: HolderValidator[] };
+import type { HolderValidator } from "@/lib/rpc-data";
+export type { HolderPosition, HolderValidator, HolderDirectory } from "@/lib/rpc-data";
+export { fetchHolderDirectory } from "@/lib/rpc-data";
 export type IncentiveReward = {
   bribe: Address;
   validator: HolderValidator;
@@ -47,22 +27,6 @@ const stakingPrecompileAbi = parseAbi([
 const agentAbi = parseAbi([
   "function usedValidator(uint64 validatorId) view returns (bool)",
 ]);
-
-export async function fetchHolderDirectory(wallet: Address): Promise<HolderDirectory> {
-  const response = await fetch(`/api/indexer?wallet=${encodeURIComponent(wallet)}`, { cache: "no-store" });
-  const payload = await response.json() as {
-    positions?: HolderPosition[];
-    networkValidators?: HolderValidator[];
-    error?: string;
-  };
-  if (!response.ok || !Array.isArray(payload.positions) || !Array.isArray(payload.networkValidators)) {
-    throw new Error(payload.error ?? "Could not load your veMON positions and validator directory.");
-  }
-  return {
-    positions: payload.positions.filter((position) => position.kind === "VE_MON"),
-    validators: payload.networkValidators.filter((validator) => validator.vault),
-  };
-}
 
 async function callEarned(publicClient: PublicClient, bribe: Address, token: Address, tokenId: bigint) {
   const data = encodeFunctionData({ abi: rewardAbi, functionName: "earned", args: [token, tokenId] });

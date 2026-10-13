@@ -7,31 +7,11 @@ import { Activity, ArrowUpRight, ExternalLink, Gauge, Plus, Sparkles, Wallet } f
 import { formatEther, type Address, type Hex } from "viem";
 import { monadTestnet } from "@/lib/web3";
 import { getContractConfig } from "@/contracts/shared";
+import { fetchHolderDirectory, fetchWalletActivity, type WalletActivity } from "@/lib/rpc-data";
 import { createValidatorSigningRequest, submitValidatedRegistration, validateRegistrationArtifact, validatorRegistrationCall, type ValidatorRegistrationArtifact, type ValidatorSigningRequest } from "@/lib/validator-signing";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 import TransactionButton, { type TransactionButtonHandle } from "@/lib/tx-flow/TransactionButton";
 
-type IndexedActivity = {
-  id: string;
-  wallet: Address;
-  tokenId: string | null;
-  kind: string;
-  amount: string;
-  relatedAddress: Address | null;
-  blockNumber: string;
-  logIndex: number;
-  timestamp: string;
-  transactionHash: `0x${string}`;
-  success: boolean | null;
-};
-type IndexedPosition = { id: string; tokenId: string; owner: Address | null; kind: string; amount: string; unlockEpoch: string | null; permanent: boolean };
-type IndexedValidator = { id: string; tokenId: string; owner: Address; vault: Address | null; gauge: Address | null; bribe: Address | null };
-type IndexerResponse = {
-  activities: IndexedActivity[];
-  positions: IndexedPosition[];
-  validators: IndexedValidator[];
-  indexing: { chainId: number; progressBlock: number; isReady: boolean } | null;
-};
 type ValidatorMode = "existing" | "new";
 type NewValidatorStep = 1 | 2 | 3 | 4 | 5;
 
@@ -48,74 +28,8 @@ const explorerLinkClass = "qv:inline-flex qv:items-center qv:gap-1 qv:text-[10px
 const inputClass = "qv:h-[41px] qv:w-full qv:min-w-0 qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[11px] qv:text-[#f0f0f6] qv:outline-none qv:placeholder:text-[#9b9eaf] qv:focus:border-[rgba(141,120,255,0.65)] qv:focus:shadow-[0_0_0_3px_rgba(141,120,255,0.1)]";
 const fieldLabelClass = "qv:text-[10px] qv:font-semibold qv:text-[#b9bac8]";
 
-const activityLabels: Record<string, string> = {
-  VALIDATOR_CREATED: "Validator identity created",
-  LOCK_CREATED: "veMON lock created",
-  LOCK_MINTED: "veMON position minted",
-  LOCK_BURNED: "veMON position withdrawn",
-  LOCK_TRANSFERRED: "veMON position transferred",
-  LOCK_MADE_PERMANENT: "Lock made permanent",
-  LOCK_MADE_FINITE: "Permanent lock converted",
-  LOCK_AMOUNT_INCREASED: "Locked MON increased",
-  LOCK_AMOUNT_DECREASED: "Locked MON decreased",
-  VALIDATOR_BACKING_INCREASED: "Validator backing increased",
-  VALIDATOR_BACKING_DECREASED: "Validator backing decreased",
-  LOCK_APPROVAL_SET: "Position approval changed",
-  LOCK_OPERATOR_APPROVED: "Position operator approved",
-  LOCK_OPERATOR_REVOKED: "Position operator revoked",
-  VALIDATOR_APPROVAL_SET: "Validator approval changed",
-  VALIDATOR_OPERATOR_APPROVED: "Validator operator approved",
-  VALIDATOR_OPERATOR_REVOKED: "Validator operator revoked",
-  MON_DEPOSITED: "MON deposited",
-  STAKED: "Stake allocation updated",
-  STAKING_INTENT_SET: "Staking intent updated",
-  STAKING_SETTLEMENT_POKED: "Staking settlement checked",
-  STAKING_AGENT_CREATED: "Staking agent created",
-  COMPOUNDED: "Rewards compounded",
-  UNSTAKED: "Stake withdrawn from validator",
-  WITHDRAWN: "MON withdrawn",
-  REWARDS_CLAIMED: "Staking rewards claimed",
-  GAUGE_REWARDS_CLAIMED: "Gauge rewards claimed",
-  BRIBE_REWARDS_CLAIMED: "Bribe rewards claimed",
-  VOTING_WEIGHT_ADDED: "Validator voting weight added",
-  VOTING_WEIGHT_REMOVED: "Validator voting weight removed",
-  VALIDATOR_VOTE_WEIGHT_SYNCED: "Validator vote weight synchronized",
-  GAUGE_REWARD_FUNDED: "Gauge rewards funded",
-  BRIBE_REWARD_FUNDED: "Validator incentives funded",
-  VAULT_REWARD_PAID: "Vault reward allocated",
-  VAULT_REWARDS_SYNCED: "Vault rewards synchronized",
-  GAUGE_CREATED: "Gauge created",
-  BRIBE_CREATED: "Bribe rewards created",
-  VALIDATOR_BOOST_UPDATED: "Validator boost updated",
-  VALIDATOR_GAUGE_REMOVED: "Validator gauge removed",
-  INCENTIVE_TOKEN_WHITELISTED: "Incentive token approved",
-  INCENTIVE_TOKEN_UNWHITELISTED: "Incentive token removed",
-  VALIDATOR_VAULT_REGISTERED: "Validator vault registered",
-  VALIDATOR_COMMISSION_SET: "Validator commission changed",
-  VALIDATOR_COMMISSION_SCHEDULED: "Validator commission scheduled",
-  VOTING_ESCROW_CONFIGURED: "Voting escrow configured",
-};
-
-const monAmountKinds = new Set([
-  "LOCK_CREATED", "LOCK_AMOUNT_INCREASED", "LOCK_AMOUNT_DECREASED", "VALIDATOR_BACKING_INCREASED",
-  "VALIDATOR_BACKING_DECREASED", "MON_DEPOSITED", "STAKED", "COMPOUNDED", "UNSTAKED", "WITHDRAWN",
-  "REWARDS_CLAIMED", "VAULT_REWARD_PAID", "VALIDATOR_VOTE_WEIGHT_SYNCED",
-]);
-
-function activityDescription(activity: IndexedActivity) {
-  const label = activityLabels[activity.kind] ?? activity.kind.replaceAll("_", " ").toLowerCase();
-  if (activity.kind === "STAKING_SETTLEMENT_POKED") return `${label} · ${activity.success ? "satisfied" : "pending"}`;
-  if (!monAmountKinds.has(activity.kind) || BigInt(activity.amount) === BigInt(0)) return label;
-  return `${label} · ${Number(formatEther(BigInt(activity.amount))).toLocaleString(undefined, { maximumFractionDigits: 4 })} MON`;
-}
-
-async function fetchIndexedActivity(wallet: Address): Promise<IndexerResponse> {
-  const response = await fetch(`/api/indexer?wallet=${encodeURIComponent(wallet)}`, { cache: "no-store" });
-  const payload = await response.json() as IndexerResponse | { error?: string };
-  if (!response.ok || !("activities" in payload)) {
-    throw new Error("error" in payload ? payload.error : "Could not load indexed Quevra activity.");
-  }
-  return payload;
+function activityDescription(activity: WalletActivity) {
+  return `${activity.label} · token #${activity.tokenId}`;
 }
 
 export default function Dashboard() {
@@ -123,29 +37,30 @@ export default function Dashboard() {
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
   const transactionButton = useRef<TransactionButtonHandle>(null);
-  const indexerQuery = useQuery({
-    queryKey: ["quevra-indexer", address?.toLowerCase()],
-    queryFn: () => fetchIndexedActivity(address as Address),
-    enabled: Boolean(address && chain?.id === monadTestnet.id),
-    refetchInterval: 12_000,
+  const directoryQuery = useQuery({
+    queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
+    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
+    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id),
+    refetchInterval: 15_000,
   });
-  const indexedActivities = indexerQuery.data?.activities ?? [];
-  const indexedPositions = indexerQuery.data?.positions ?? [];
-  const indexedVeMonPositions = indexedPositions.filter((position) => position.kind === "VE_MON");
-  const indexedValidators = indexerQuery.data?.validators ?? [];
+  const activityQuery = useQuery({
+    queryKey: ["quevra-activity", address?.toLowerCase(), chain?.id],
+    queryFn: () => fetchWalletActivity(publicClient!, address as Address),
+    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id),
+    refetchInterval: 15_000,
+  });
+  const indexedVeMonPositions = directoryQuery.data?.positions ?? [];
+  const indexedValidators = directoryQuery.data?.validators.filter((validator) => validator.owner.toLowerCase() === address?.toLowerCase()) ?? [];
+  const indexedActivities = activityQuery.data ?? [];
   const lockedMon = indexedVeMonPositions.reduce((sum, position) => sum + BigInt(position.amount), BigInt(0));
-  const indexedGauges = indexedValidators.filter((validator) => validator.gauge).length;
-  const recentRewardClaims = indexedActivities.filter((activity) => activity.kind.endsWith("REWARDS_CLAIMED")).length;
+  const indexedGauges = indexedValidators.filter((validator) => validator.gauge !== "0x0000000000000000000000000000000000000000").length;
   const metricCards = [
-    { label: "Locked MON", value: indexerQuery.isPending ? "—" : `${Number(formatEther(lockedMon)).toLocaleString(undefined, { maximumFractionDigits: 3 })} MON`, note: `${indexedVeMonPositions.length} veMON positions`, icon: Wallet, trend: "neutral" },
-    { label: "Validator identities", value: indexerQuery.isPending ? "—" : String(indexedValidators.length), note: "veValidator identities owned by this wallet", icon: Gauge, trend: "neutral" },
-    { label: "Recent reward claims", value: indexerQuery.isPending ? "—" : String(recentRewardClaims), note: "In the latest 25 indexed activities", icon: Sparkles, trend: "up" },
-    { label: "Your gauges", value: indexerQuery.isPending ? "—" : String(indexedGauges), note: "Gauges linked to your veValidator NFTs", icon: Activity, trend: "neutral" },
+    { label: "Locked MON", value: directoryQuery.isPending ? "—" : `${Number(formatEther(lockedMon)).toLocaleString(undefined, { maximumFractionDigits: 3 })} MON`, note: `${indexedVeMonPositions.length} veMON positions`, icon: Wallet, trend: "neutral" },
+    { label: "veMON positions", value: directoryQuery.isPending ? "—" : String(indexedVeMonPositions.length), note: "Current positions owned by this wallet", icon: Activity, trend: "neutral" },
+    { label: "Validator identities", value: directoryQuery.isPending ? "—" : String(indexedValidators.length), note: "veValidator identities owned by this wallet", icon: Gauge, trend: "neutral" },
+    { label: "Your gauges", value: directoryQuery.isPending ? "—" : String(indexedGauges), note: "Gauges linked to your validator identities", icon: Sparkles, trend: "up" },
   ] as const;
-  const recentTransactions = Array.from(indexedActivities.reduce((transactions, activity) => {
-    if (!transactions.has(activity.transactionHash)) transactions.set(activity.transactionHash, activity);
-    return transactions;
-  }, new Map<string, IndexedActivity>()).values()).slice(0, 5);
+  const recentTransactions = Array.from(new Map(indexedActivities.map((activity) => [activity.transactionHash, activity])).values()).slice(0, 5);
   const [validatorMode, setValidatorMode] = useState<ValidatorMode>("new");
   const [newValidatorStep, setNewValidatorStep] = useState<NewValidatorStep>(1);
   const [validatorId, setValidatorId] = useState("");
@@ -316,7 +231,8 @@ export default function Dashboard() {
   }
 
   function refreshIndexedActivity() {
-    void queryClient.invalidateQueries({ queryKey: ["quevra-indexer", address?.toLowerCase()] });
+    void queryClient.invalidateQueries({ queryKey: ["quevra-directory", address?.toLowerCase()] });
+    void queryClient.invalidateQueries({ queryKey: ["quevra-activity", address?.toLowerCase()] });
   }
 
   return (
@@ -340,8 +256,8 @@ export default function Dashboard() {
         <div className="qv:relative qv:z-10 qv:mt-7 qv:flex qv:flex-wrap qv:items-end qv:justify-between qv:gap-4">
           <div className="qv:min-w-0">
             <span className="qv:block qv:text-xs qv:text-[#c1bbdf]">Connected positions</span>
-            <div className="qv:my-1.5 qv:text-[28px] qv:font-semibold qv:tracking-[-0.045em] qv:text-white qv:sm:text-[38px]">{isConnected ? indexerQuery.isPending ? "—" : indexedValidators.length + indexedVeMonPositions.length : "Connect wallet"}</div>
-            <span className="qv:block qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">Indexed veMON and validator positions</span>
+            <div className="qv:my-1.5 qv:text-[28px] qv:font-semibold qv:tracking-[-0.045em] qv:text-white qv:sm:text-[38px]">{isConnected ? directoryQuery.isPending ? "—" : indexedValidators.length + indexedVeMonPositions.length : "Connect wallet"}</div>
+            <span className="qv:block qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">Current veMON and validator positions from Monad RPC</span>
           </div>
           <div aria-hidden="true" className="qv:relative qv:hidden qv:h-[94px] qv:w-[115px] qv:items-center qv:justify-center qv:text-[rgba(238,233,255,0.78)] qv:sm:flex">
             <span className="qv:z-10 qv:text-[58px] qv:font-light qv:leading-none">Q</span>
@@ -373,16 +289,16 @@ export default function Dashboard() {
             <div><span className={kickerClass}>PORTFOLIO</span><h2 className={panelTitleClass}>Activity overview</h2></div>
             <span className="qv:rounded-md qv:border qv:border-white/[0.075] qv:px-[9px] qv:py-1.5 qv:text-[10px] qv:text-[#a3a5b5]">Your account</span>
           </div>
-          <div aria-label="Recent indexed Quevra activity" className="qv:mt-4 qv:min-h-[174px] qv:space-y-1.5">
+          <div aria-label="Recent Quevra position activity" className="qv:mt-4 qv:min-h-[174px] qv:space-y-1.5">
             {!isConnected ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Connect your wallet to view Quevra activity.</p> : null}
-            {isConnected && chain?.id !== monadTestnet.id ? <p className="qv:text-[10px] qv:text-[#e6b971]">Switch to Monad Testnet to view indexed activity.</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && indexerQuery.isPending ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Loading indexed activity…</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && indexerQuery.isError ? <p className="qv:text-[10px] qv:text-[#e6b971]">Activity index unavailable. Start the Quevra indexer or configure its hosted endpoint.</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && indexerQuery.isSuccess && indexedActivities.length === 0 ? <p className="qv:text-[10px] qv:text-[#a9acbd]">No Quevra activity has been indexed for this wallet yet.</p> : null}
+            {isConnected && chain?.id !== monadTestnet.id ? <p className="qv:text-[10px] qv:text-[#e6b971]">Switch to Monad Testnet to view position activity.</p> : null}
+            {isConnected && chain?.id === monadTestnet.id && activityQuery.isPending ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Loading recent position activity…</p> : null}
+            {isConnected && chain?.id === monadTestnet.id && activityQuery.isError ? <p className="qv:text-[10px] qv:text-[#e6b971]">Could not read recent position activity from Monad RPC.</p> : null}
+            {isConnected && chain?.id === monadTestnet.id && activityQuery.isSuccess && indexedActivities.length === 0 ? <p className="qv:text-[10px] qv:text-[#a9acbd]">No veNFT activity found for this wallet.</p> : null}
             {indexedActivities.slice(0, 5).map((activity) => (
               <div className="qv:flex qv:items-center qv:justify-between qv:gap-3 qv:rounded-md qv:border qv:border-white/[0.055] qv:bg-[#0e1018] qv:px-3 qv:py-2" key={activity.id}>
                 <span className="qv:min-w-0 qv:truncate qv:text-[10px] qv:text-[#d5d5e0]">{activityDescription(activity)}</span>
-                <span className="qv:shrink-0 qv:text-[9px] qv:text-[#9b9eb0]">{new Date(Number(activity.timestamp) * 1000).toLocaleDateString()}</span>
+                <span className="qv:shrink-0 qv:text-[9px] qv:text-[#9b9eb0]">Block {activity.blockNumber}</span>
               </div>
             ))}
           </div>
@@ -514,7 +430,7 @@ pnpm --filter @quevra/ops keystore:public`}</pre>
         )) : (
           <div className="qv:mt-2.5 qv:flex qv:min-h-[81px] qv:items-center qv:gap-3 qv:border-t qv:border-white/[0.075]">
             <span className={`${emptyIconClass} qv:size-[34px] qv:rounded-[10px]`}><Activity size={18} /></span>
-            <div className="qv:flex qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{indexerQuery.isError ? "Activity index unavailable" : isConnected ? "No recent transactions found" : "Your activity will show here"}</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">{indexerQuery.isError ? "Start the Quevra Envio indexer or configure the hosted endpoint." : isConnected ? "Transactions from your Quevra positions will appear here." : "Connect your wallet to view your Quevra history."}</span></div>
+            <div className="qv:flex qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{activityQuery.isError ? "RPC activity unavailable" : isConnected ? "No recent transactions found" : "Your activity will show here"}</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">{activityQuery.isError ? "Monad RPC could not return veNFT transfer history." : isConnected ? "Recent veNFT transfers and position creation appear here." : "Connect your wallet to view your Quevra history."}</span></div>
           </div>
         )}
       </section>

@@ -23,8 +23,8 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
   const [selectedTokenId, setSelectedTokenId] = useState(initialTokenId ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const directoryQuery = useQuery({
-    queryKey: ["rewards-directory", address?.toLowerCase(), chain?.id],
-    queryFn: () => fetchHolderDirectory(address as Address),
+    queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
+    queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
     enabled: Boolean(address && chain?.id === monadTestnet.id),
     refetchInterval: 15_000,
   });
@@ -85,7 +85,7 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
       directoryQuery.refetch(),
       queryClient.invalidateQueries({ queryKey: ["native-rewards", address?.toLowerCase(), selectedTokenId] }),
       queryClient.invalidateQueries({ queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId] }),
-      queryClient.invalidateQueries({ queryKey: ["quevra-indexer", address?.toLowerCase()] }),
+      queryClient.invalidateQueries({ queryKey: ["quevra-directory", address?.toLowerCase()] }),
     ]);
   }
 
