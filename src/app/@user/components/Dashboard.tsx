@@ -333,9 +333,11 @@ export default function Dashboard() {
                 {newValidatorStep === 1 ? (
 <article className="qv:grid qv:gap-2 qv:rounded-lg qv:border qv:border-white/[0.075] qv:bg-[#0e1018] qv:p-3">
                   <strong className="qv:text-[10px] qv:text-[#d5d5e0]">Step 1 · Prepare your Monad consensus keys</strong>
-                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#aeb1c1]">If you already operate a validator, keep using its SECP256K1 and BLS keystores. To create new keys, set <code>KEYSTORE_PASSWORD</code> in the repo root <code>.env</code> or your shell, then run <code className="qv:text-[#c5bbff]">pnpm validator:keys</code> on your operator machine. It calls Monad’s <code className="qv:text-[#c5bbff]">monad-keystore create</code>, and stores encrypted keystores plus restricted backups under the ignored <code>validator-keys/</code> folder.</p>
-                  <pre className="qv:m-0 qv:overflow-x-auto qv:rounded-md qv:bg-[#090b11] qv:p-2.5 qv:text-[9px] qv:leading-relaxed qv:text-[#c5bbff]">{`pnpm validator:keys`}</pre>
-                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#e6b971]">The generated backups contain secrets. Keep them on the operator machine and never paste them into this app.</p>
+                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#aeb1c1]">If you already operate a validator, keep using its SECP256K1 and BLS keystores. To create new keys, use the Docker-backed wrapper for Monad’s official <code className="qv:text-[#c5bbff]">monad-keystore</code>. It prompts for the encryption password and stores keys outside the repo at <code>~/.quevra/validator/</code>.</p>
+                  <pre className="qv:m-0 qv:overflow-x-auto qv:rounded-md qv:bg-[#090b11] qv:p-2.5 qv:text-[9px] qv:leading-relaxed qv:text-[#c5bbff]">{`pnpm --filter @quevra/ops keystore:build
+pnpm --filter @quevra/ops keystore:create
+pnpm --filter @quevra/ops keystore:public`}</pre>
+                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#e6b971]">The public command prints public keys only. Keep encrypted keystores and the password on the operator machine; never paste private material into this app.</p>
                   <button className="qv:mt-1 qv:min-h-9 qv:rounded-md qv:border qv:border-[rgba(141,120,255,0.35)] qv:bg-[rgba(141,120,255,0.08)] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#c5bbff]" onClick={() => setNewValidatorStep(2)} type="button">I have my keys · Continue</button>
                 </article>
                 ) : null}
@@ -355,14 +357,9 @@ export default function Dashboard() {
                 {newValidatorStep === 3 ? (
 <article className="qv:grid qv:gap-2 qv:rounded-lg qv:border qv:border-white/[0.075] qv:bg-[#0e1018] qv:p-3">
                   <strong className="qv:text-[10px] qv:text-[#d5d5e0]">Step 3 · Sign with Monad’s official tools</strong>
-                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#aeb1c1]">Install Monad’s <a className="qv:text-[#c5bbff] qv:underline" href="https://github.com/monad-developers/staking-sdk-cli" rel="noreferrer" target="_blank">official staking-sdk-cli</a> in a Python virtual environment if it is not installed yet. Run these setup commands from the Quevra repo root; then use the active virtual environment and the request file you saved:</p>
-                  <pre className="qv:m-0 qv:overflow-x-auto qv:rounded-md qv:bg-[#090b11] qv:p-2.5 qv:text-[9px] qv:leading-relaxed qv:text-[#a9acbd]">{`git clone https://github.com/monad-developers/staking-sdk-cli.git /tmp/staking-sdk-cli
-python3 -m venv validator-keys/staking-sdk-venv
-source validator-keys/staking-sdk-venv/bin/activate
-pip install /tmp/staking-sdk-cli
-read -s KEYSTORE_PASSWORD && export KEYSTORE_PASSWORD`}</pre>
-                  <pre className="qv:m-0 qv:overflow-x-auto qv:rounded-md qv:bg-[#090b11] qv:p-2.5 qv:text-[9px] qv:leading-relaxed qv:text-[#c5bbff]">{`pnpm validator:sign -- --request ./quevra-validator-request.json \\\n  --secp-keystore-path ./validator-keys/id-secp \\\n  --bls-keystore-path ./validator-keys/id-bls`}</pre>
-                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#a9acbd]">The ops command recovers keys from those keystores and calls the official SDK signer. It writes the signed JSON under <code>validator-keys/</code> and prints that public artifact. Copy the JSON message from the terminal. No private keys are sent to Quevra.</p>
+                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#aeb1c1]">The Docker image built in Step 1 contains Monad’s official <a className="qv:text-[#c5bbff] qv:underline" href="https://github.com/monad-developers/staking-sdk-cli" rel="noreferrer" target="_blank">staking-sdk-cli</a> and keystore binary. From the Quevra repo root, save the copied request as <code>quevra-validator-request.json</code>; then run the signer (it uses that request file by default):</p>
+                  <pre className="qv:m-0 qv:overflow-x-auto qv:rounded-md qv:bg-[#090b11] qv:p-2.5 qv:text-[9px] qv:leading-relaxed qv:text-[#c5bbff]">{`pnpm validator:sign`}</pre>
+                  <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#a9acbd]">The signer prompts for the keystore password, or reads <code>KEYSTORE_PASSWORD</code> from the shell or repo-root <code>.env</code>. Docker runs offline with the encrypted keystores mounted read-only; recovered keys stay in the container’s memory and are never printed or saved. Only the public signed message is returned. Copy it into the next step.</p>
                   <div className="qv:flex qv:gap-2"><button className="qv:min-h-9 qv:rounded-md qv:border qv:border-white/10 qv:px-3 qv:text-[10px] qv:text-[#9294a5]" onClick={() => setNewValidatorStep(2)} type="button">Back</button><button className="qv:min-h-9 qv:flex-1 qv:rounded-md qv:border qv:border-[rgba(141,120,255,0.35)] qv:bg-[rgba(141,120,255,0.08)] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#c5bbff]" onClick={() => setNewValidatorStep(4)} type="button">I have signed · Continue</button></div>
                 </article>
                 ) : null}
