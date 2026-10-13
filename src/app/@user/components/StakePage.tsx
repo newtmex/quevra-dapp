@@ -8,6 +8,7 @@ import { ArrowRight, Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Wall
 import { formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
 import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/rpc-data";
+import { estimateGaugeWeight, readCurrentCycle } from "@/lib/protocol-time";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
@@ -15,7 +16,15 @@ import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 type Position = HolderPosition;
 type Validator = HolderValidator;
 type ValidatorStakeState = { active: boolean; intent: bigint; allocation: bigint; pending: bigint };
-type StakeState = { liquid: bigint; principal: bigint; lastCycle: bigint; validators: Record<string, ValidatorStakeState> };
+type StakeState = {
+  liquid: bigint;
+  principal: bigint;
+  lastCycle: bigint;
+  currentEpoch: bigint;
+  currentCycle: bigint;
+  votingPower: bigint;
+  validators: Record<string, ValidatorStakeState>;
+};
 
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const field = "qv:h-10 qv:w-full qv:min-w-0 qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[11px] qv:text-[#f0f0f6] qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
@@ -25,37 +34,47 @@ async function readStakeState(
   publicClient: PublicClient,
   controllerAddress: Address,
   controllerAbi: readonly unknown[],
+  escrowAddress: Address,
+  escrowAbi: readonly unknown[],
   tokenId: bigint,
   validators: Validator[],
 ): Promise<StakeState> {
-  const calls = [
-    { address: controllerAddress, abi: controllerAbi, functionName: "balanceOf", args: [tokenId] },
-    { address: controllerAddress, abi: controllerAbi, functionName: "veMONPrincipalOf", args: [tokenId] },
-    { address: controllerAddress, abi: controllerAbi, functionName: "stakingCycleOf", args: [tokenId] },
-    ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "isValidatorActive", args: [vault!] })),
-    ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "intentOf", args: [tokenId, vault!] })),
-    ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "allocationOf", args: [tokenId, vault!] })),
-    ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "pendingOf", args: [tokenId, vault!] })),
-  ];
-  const results = await publicClient.multicall({ contracts: calls as never, allowFailure: true }) as unknown as Array<
-    { status: "success"; result: unknown } | { status: "failure"; error: Error }
-  >;
+  const [{ epoch, cycle }, results] = await Promise.all([
+    readCurrentCycle(publicClient),
+    publicClient.multicall({
+      contracts: [
+        { address: controllerAddress, abi: controllerAbi, functionName: "balanceOf", args: [tokenId] },
+        { address: controllerAddress, abi: controllerAbi, functionName: "veMONPrincipalOf", args: [tokenId] },
+        { address: controllerAddress, abi: controllerAbi, functionName: "stakingCycleOf", args: [tokenId] },
+        { address: escrowAddress, abi: escrowAbi, functionName: "votingPowerOf", args: [tokenId] },
+        ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "isValidatorActive", args: [vault!] })),
+        ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "intentOf", args: [tokenId, vault!] })),
+        ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "allocationOf", args: [tokenId, vault!] })),
+        ...validators.map(({ vault }) => ({ address: controllerAddress, abi: controllerAbi, functionName: "pendingOf", args: [tokenId, vault!] })),
+      ] as never,
+      allowFailure: true,
+    }) as unknown as Promise<Array<{ status: "success"; result: unknown } | { status: "failure"; error: Error }>>,
+  ]);
   const read = (index: number) => results[index]?.status === "success" ? results[index].result : undefined;
   const count = validators.length;
+  const offset = 4;
   const stateByVault: Record<string, ValidatorStakeState> = {};
   for (let index = 0; index < count; index += 1) {
     const vault = validators[index].vault!.toLowerCase();
     stateByVault[vault] = {
-      active: read(3 + index) === true,
-      intent: (read(3 + count + index) as bigint | undefined) ?? BigInt(0),
-      allocation: (read(3 + 2 * count + index) as bigint | undefined) ?? BigInt(0),
-      pending: (read(3 + 3 * count + index) as bigint | undefined) ?? BigInt(0),
+      active: read(offset + index) === true,
+      intent: (read(offset + count + index) as bigint | undefined) ?? BigInt(0),
+      allocation: (read(offset + 2 * count + index) as bigint | undefined) ?? BigInt(0),
+      pending: (read(offset + 3 * count + index) as bigint | undefined) ?? BigInt(0),
     };
   }
   return {
     liquid: (read(0) as bigint | undefined) ?? BigInt(0),
     principal: (read(1) as bigint | undefined) ?? BigInt(0),
     lastCycle: (read(2) as bigint | undefined) ?? BigInt(0),
+    votingPower: (read(3) as bigint | undefined) ?? BigInt(0),
+    currentEpoch: epoch,
+    currentCycle: cycle,
     validators: stateByVault,
   };
 }
@@ -98,8 +117,16 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
   const selectedPosition = positions.find((position) => position.tokenId === selectedTokenId);
   const stateQuery = useQuery({
     queryKey: ["stake-position-state", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.vault?.toLowerCase()).join(",")],
-    queryFn: () => readStakeState(publicClient!, controller!.address, controller!.abi, BigInt(selectedTokenId), validators),
-    enabled: Boolean(address && publicClient && selectedPosition && controller?.address && selectedTokenId),
+    queryFn: () => readStakeState(
+      publicClient!,
+      controller!.address,
+      controller!.abi,
+      escrow!.address,
+      escrow!.abi,
+      BigInt(selectedTokenId),
+      validators,
+    ),
+    enabled: Boolean(address && publicClient && selectedPosition && controller?.address && escrow?.address && selectedTokenId),
     refetchInterval: 12_000,
   });
   const stakeState = stateQuery.data;
@@ -136,7 +163,37 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
     return Boolean(state && (state.pending > BigInt(0) || state.intent !== state.allocation));
   });
   const withinBalance = totalTarget <= maxAllocation;
-  const canSubmit = Boolean(address && chain?.id === protocolChain.id && selectedTokenId && stakeRows.length && withinBalance && controller?.address);
+  const cycleBlocked = Boolean(
+    stakeState
+    && hasExistingPosition
+    && stakeState.currentCycle <= stakeState.lastCycle,
+  );
+  const canSubmit = Boolean(
+    address
+    && chain?.id === protocolChain.id
+    && selectedTokenId
+    && stakeRows.length
+    && withinBalance
+    && controller?.address
+    && !cycleBlocked,
+  );
+  const allocatedPrincipal = useMemo(() => {
+    if (!stakeState) return BigInt(0);
+    return Object.values(stakeState.validators).reduce((sum, state) => sum + state.allocation, BigInt(0));
+  }, [stakeState]);
+  const unallocatedPrincipal = stakeState ? (stakeState.principal > allocatedPrincipal ? stakeState.principal - allocatedPrincipal : BigInt(0)) : BigInt(0);
+  const voteRows = useMemo(() => {
+    if (!stakeState) return [];
+    return validators
+      .map((validator) => {
+        const state = stakeState.validators[validator.vault!.toLowerCase()];
+        const allocated = state?.allocation ?? BigInt(0);
+        const intent = state?.intent ?? BigInt(0);
+        const weight = estimateGaugeWeight(stakeState.votingPower, allocated, stakeState.principal);
+        return { validator, allocated, intent, weight };
+      })
+      .filter((row) => row.allocated > BigInt(0) || row.intent > BigInt(0) || parseMon(allocations[row.validator.vault!.toLowerCase()] ?? "") > BigInt(0));
+  }, [allocations, stakeState, validators]);
   const steps = useMemo(() => [makeContractWriteStep({
     key: `set-stake-allocation-${selectedTokenId}`,
     label: "Set validator allocation",
@@ -194,8 +251,11 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
                     <div className="qv:mt-4 qv:grid qv:grid-cols-2 qv:gap-2">
                       <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Liquid MON</p><p className="qv:mt-1 qv:text-[14px] qv:font-semibold qv:text-white">{stakeState ? formatMon(stakeState.liquid) : "—"}</p></div>
                       <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Position principal</p><p className="qv:mt-1 qv:text-[14px] qv:font-semibold qv:text-white">{stakeState ? formatMon(stakeState.principal) : "—"}</p></div>
+                      <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Voting power</p><p className="qv:mt-1 qv:text-[14px] qv:font-semibold qv:text-white">{stakeState ? formatMon(stakeState.votingPower) : "—"}</p></div>
+                      <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Protocol cycle</p><p className="qv:mt-1 qv:text-[14px] qv:font-semibold qv:text-white">{stakeState ? stakeState.currentCycle.toString() : "—"}</p></div>
                     </div>
-                    {stakeState && <p className="qv:mt-3 qv:text-[9px] qv:leading-4 qv:text-[#898b9c]">Last allocation update: cycle {stakeState.lastCycle.toString()}. Updates are limited to a new protocol cycle.</p>}
+                    {stakeState && <p className="qv:mt-3 qv:text-[9px] qv:leading-4 qv:text-[#898b9c]">Epoch {stakeState.currentEpoch.toString()} · last stake write in cycle {stakeState.lastCycle.toString()}. Reallocations are once per Quevra cycle.</p>}
+                    {cycleBlocked && <p className="qv:mt-2 qv:flex qv:items-center qv:gap-1.5 qv:text-[10px] qv:text-[#e7c27f]"><CircleAlert size={13} /> This position already wrote allocations in cycle {stakeState?.lastCycle.toString()}. Wait for cycle {(stakeState?.lastCycle ?? BigInt(0)) + BigInt(1)} to change targets.</p>}
                     <div className="qv:mt-5 qv:flex qv:items-end qv:justify-between qv:gap-3"><div><p className="qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.11em] qv:text-[#b9bac8]">Allocation total</p><p className={`qv:mt-1 qv:text-[20px] qv:font-semibold ${withinBalance ? "qv:text-white" : "qv:text-[#ff9caa]"}`}>{formatMon(totalTarget)} <span className="qv:text-[10px] qv:font-normal qv:text-[#999bad]">/ {formatMon(maxAllocation)} MON</span></p></div></div>
                     {!withinBalance && <p className="qv:mt-2 qv:flex qv:items-center qv:gap-1.5 qv:text-[10px] qv:text-[#ff9caa]"><CircleAlert size={13} /> Allocations exceed this position’s available principal.</p>}
                     {error && <p className="qv:mt-3 qv:text-[10px] qv:text-[#ff9caa]">{error}</p>}
@@ -222,10 +282,25 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
                             const state = stakeState?.validators[vaultKey];
                             const value = allocations[vaultKey] ?? "";
                             return <article className={`${panel} qv:flex qv:flex-col qv:gap-3 qv:p-3.5 qv:sm:flex-row qv:sm:items-center qv:sm:justify-between qv:sm:p-4`} key={validator.id}>
-                              <div className="qv:min-w-0"><div className="qv:flex qv:flex-wrap qv:items-center qv:gap-2"><p className="qv:m-0 qv:text-[12px] qv:font-semibold qv:text-[#e9e9f1]">{validator.validatorId ? `Validator #${validator.validatorId}` : `Validator identity #${validator.tokenId}`}</p><span className={`qv:rounded-full qv:px-2 qv:py-0.5 qv:text-[8px] qv:font-semibold ${state?.active ? "qv:bg-[rgba(85,194,127,0.1)] qv:text-[#9adcb0]" : "qv:bg-[rgba(236,183,91,0.1)] qv:text-[#e7c27f]"}`}>{state?.active ? "Active" : "Pre-registration"}</span></div><p className="qv:mt-1 qv:truncate qv:text-[9px] qv:text-[#898b9c]">Operator {shorten(validator.operator ?? validator.owner)} · Vault {shorten(validator.vault)}</p><p className="qv:mt-1 qv:text-[9px] qv:text-[#999bad]">Target {formatMon(state?.intent ?? BigInt(0))} · Current {formatMon(state?.allocation ?? BigInt(0))} · Pending {formatMon(state?.pending ?? BigInt(0))} MON</p></div>
+                              <div className="qv:min-w-0"><div className="qv:flex qv:flex-wrap qv:items-center qv:gap-2"><p className="qv:m-0 qv:text-[12px] qv:font-semibold qv:text-[#e9e9f1]">{validator.validatorId ? `Validator #${validator.validatorId}` : `Validator identity #${validator.tokenId}`}</p><span className={`qv:rounded-full qv:px-2 qv:py-0.5 qv:text-[8px] qv:font-semibold ${state?.active ? "qv:bg-[rgba(85,194,127,0.1)] qv:text-[#9adcb0]" : "qv:bg-[rgba(236,183,91,0.1)] qv:text-[#e7c27f]"}`}>{state?.active ? "Active" : "Pre-registration"}</span></div><p className="qv:mt-1 qv:truncate qv:text-[9px] qv:text-[#898b9c]">Operator {shorten(validator.operator ?? validator.owner)} · Vault {shorten(validator.vault)}</p><p className="qv:mt-1 qv:text-[9px] qv:text-[#999bad]">Target {formatMon(state?.intent ?? BigInt(0))} · Current {formatMon(state?.allocation ?? BigInt(0))} · Pending {formatMon(state?.pending ?? BigInt(0))} MON</p>{!state?.active && <p className="qv:mt-1 qv:text-[9px] qv:leading-4 qv:text-[#e7c27f]">Pre-registration vault: stake here builds the 100k MON auth backing before native registration.</p>}</div>
                               <label className="qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:text-[#999bad]"><input className={input} inputMode="decimal" onChange={(event) => setAmount(validator.vault!, event.target.value)} placeholder="0.0" value={value} /><span>MON</span></label>
                             </article>;
                           })}</div>}
+                    {stakeState && <section className={`${panel} qv:p-4`}>
+                      <p className="qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.12em] qv:text-[#aeb0c0]">Stake-linked vote weight</p>
+                      <p className="qv:mt-1 qv:text-[9px] qv:leading-4 qv:text-[#999bad]">Your allocation is your vote. Estimated gauge weight ≈ voting power × allocated MON / principal. Unallocated principal does not vote.</p>
+                      <div className="qv:mt-3 qv:grid qv:grid-cols-2 qv:gap-2">
+                        <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Allocated</p><p className="qv:mt-1 qv:text-[13px] qv:font-semibold qv:text-white">{formatMon(allocatedPrincipal)} MON</p></div>
+                        <div className="qv:rounded-lg qv:bg-[#0e1018] qv:p-3"><p className="qv:text-[9px] qv:text-[#898b9c]">Unallocated (0 vote)</p><p className="qv:mt-1 qv:text-[13px] qv:font-semibold qv:text-white">{formatMon(unallocatedPrincipal)} MON</p></div>
+                      </div>
+                      {voteRows.length === 0 ? <p className="qv:mt-3 qv:text-[9px] qv:text-[#9295a7]">No validator allocations yet.</p>
+                        : <div className="qv:mt-3 qv:space-y-2">{voteRows.map(({ validator, allocated, weight }) => (
+                          <div className="qv:flex qv:items-center qv:justify-between qv:gap-3 qv:rounded-lg qv:bg-[#0e1018] qv:px-3 qv:py-2" key={validator.id}>
+                            <p className="qv:text-[10px] qv:font-semibold qv:text-[#e9e9f1]">{validator.validatorId ? `Validator #${validator.validatorId}` : `Identity #${validator.tokenId}`}</p>
+                            <p className="qv:text-right qv:text-[9px] qv:text-[#999bad]">{formatMon(allocated)} MON · est. weight {formatMon(weight)}</p>
+                          </div>
+                        ))}</div>}
+                    </section>}
                     <div className="qv:flex qv:items-start qv:gap-2 qv:rounded-lg qv:border qv:border-white/[0.07] qv:bg-[#10121a] qv:p-3 qv:text-[9px] qv:leading-4 qv:text-[#999bad]"><ShieldCheck size={13} className="qv:mt-0.5 qv:shrink-0 qv:text-[#a99aff]" />Stake allocations are your validator vote. Changes set a target allocation first; undelegations and redelegations may take multiple Monad epochs to settle. Anyone can help advance settlement.</div>
                   </section>
                 </div>}

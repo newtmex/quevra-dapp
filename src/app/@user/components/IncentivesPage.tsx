@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { ArrowUpRight, CheckCircle2, CircleAlert, Coins, LoaderCircle, ShieldCheck, Wallet } from "lucide-react";
-import { decodeFunctionResult, encodeFunctionData, formatUnits, isAddress, parseAbi, parseUnits, type Address, type PublicClient } from "viem";
+import { formatUnits, isAddress, parseAbi, parseUnits, type Address, type PublicClient } from "viem";
 import { erc20Abi } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
+import { EPOCHS_PER_CYCLE, epochToCycle, readCurrentEpoch } from "@/lib/protocol-time";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeTokenApprovalStep } from "@/lib/tx-flow/steps";
@@ -32,17 +33,6 @@ const bribeAbi = parseAbi([
   "function tokenRewardsPerCycle(address token, uint256 cycle) view returns (uint256)",
   "function notifyRewardAmount(address token, uint256 amount)",
 ]);
-const stakingPrecompileAbi = parseAbi(["function getEpoch() returns (uint64 epoch, bool inEpochDelayPeriod)"]);
-
-async function currentEpoch(publicClient: PublicClient) {
-  const result = await publicClient.call({
-    to: "0x0000000000000000000000000000000000001000",
-    data: encodeFunctionData({ abi: stakingPrecompileAbi, functionName: "getEpoch" }),
-  });
-  if (!result.data) throw new Error("Monad did not return the current staking epoch.");
-  const [epoch] = decodeFunctionResult({ abi: stakingPrecompileAbi, functionName: "getEpoch", data: result.data }) as readonly [bigint, boolean];
-  return epoch;
-}
 
 async function readFundingState(
   publicClient: PublicClient,
@@ -51,17 +41,17 @@ async function readFundingState(
   wallet: Address,
 ): Promise<FundingState> {
   const voter = getContractConfig(protocolChain.id, "ValidatorsVoter");
-  if (!voter) throw new Error("The validator voter is not configured on Monad Testnet.");
+  if (!voter) throw new Error(`The validator voter is not configured on ${protocolChain.name}.`);
   const [epoch, symbol, decimals, balance, voterWhitelisted, bribeRegistered] = await Promise.all([
-    currentEpoch(publicClient),
+    readCurrentEpoch(publicClient),
     publicClient.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }),
     publicClient.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }),
     publicClient.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [wallet] }),
     publicClient.readContract({ address: voter.address, abi: voter.abi, functionName: "isWhitelistedToken", args: [token] }),
     publicClient.readContract({ address: bribe, abi: bribeAbi, functionName: "isReward", args: [token] }),
   ]);
-  const cycle = epoch / BigInt(5);
-  const cycleStart = cycle * BigInt(5);
+  const cycle = epochToCycle(epoch);
+  const cycleStart = cycle * EPOCHS_PER_CYCLE;
   const fundedThisCycle = await publicClient.readContract({
     address: bribe,
     abi: bribeAbi,
@@ -168,7 +158,7 @@ export default function IncentivesPage() {
                       <label className="qv:block qv:space-y-2"><span className="qv:text-[10px] qv:font-semibold qv:text-[#b9bac8]">Reward token address</span><input className={field} autoCapitalize="off" autoComplete="off" onChange={(event) => { setTokenAddress(event.target.value); setMessage(null); }} placeholder="0x…" spellCheck={false} value={tokenAddress} /><span className="qv:block qv:text-[9px] qv:leading-4 qv:text-[#898b9c]">The token must be enabled by Quevra or already registered on this bribe contract.</span></label>
                       {fundingQuery.isPending && token && <p className="qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:text-[#999bad]"><LoaderCircle size={12} className="qv:animate-spin" />Checking token support and wallet balance…</p>}
                       {!token && normalizedToken && <p className="qv:text-[9px] qv:text-[#ff9caa]">Enter a valid ERC-20 address.</p>}
-                      {fundingQuery.isError && <p className="qv:text-[9px] qv:text-[#ff9caa]">Could not read this token on Monad Testnet. Check the address and try again.</p>}
+                      {fundingQuery.isError && <p className="qv:text-[9px] qv:text-[#ff9caa]">Could not read this token on {protocolChain.name}. Check the address and try again.</p>}
                       {state && !supportedToken && <p className="qv:flex qv:items-start qv:gap-2 qv:rounded-lg qv:border qv:border-[rgba(255,156,170,0.16)] qv:bg-[rgba(255,156,170,0.05)] qv:p-3 qv:text-[9px] qv:leading-4 qv:text-[#ffb3bd]"><CircleAlert size={13} className="qv:mt-0.5 qv:shrink-0" />This token is not currently approved by Quevra and has not been used on this validator’s bribe contract.</p>}
                       {state && supportedToken && <p className="qv:flex qv:items-start qv:gap-2 qv:rounded-lg qv:border qv:border-[rgba(85,194,127,0.14)] qv:bg-[rgba(85,194,127,0.05)] qv:p-3 qv:text-[9px] qv:leading-4 qv:text-[#a9e2b7]"><CheckCircle2 size={13} className="qv:mt-0.5 qv:shrink-0" />{state.voterWhitelisted ? "Approved by Quevra" : "Already registered on this bribe"} · {state.symbol} has {state.decimals} decimals.</p>}
                       <label className="qv:block qv:space-y-2"><span className="qv:text-[10px] qv:font-semibold qv:text-[#b9bac8]">Amount {state ? `(${state.symbol})` : ""}</span><input className={field} inputMode="decimal" onChange={(event) => { setAmount(event.target.value); setMessage(null); }} placeholder="0.0" value={amount} /><span className="qv:block qv:text-[9px] qv:text-[#898b9c]">Wallet balance: {state ? `${formatToken(state.balance, state.decimals)} ${state.symbol}` : "—"}</span></label>

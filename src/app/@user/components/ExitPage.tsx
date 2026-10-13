@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { ArrowDownToLine, ArrowRight, CircleAlert, Clock3, LoaderCircle, ShieldCheck, Wallet } from "lucide-react";
-import { decodeFunctionResult, encodeFunctionData, formatEther, parseAbi, type Address, type PublicClient } from "viem";
+import { formatEther, parseAbi, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
+import { epochToCycle, readCurrentEpoch } from "@/lib/protocol-time";
 import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
-import { makeContractWriteStep } from "@/lib/tx-flow/steps";
-import { fetchHolderDirectory, readIncentiveRewards } from "./reward-data";
+import { makeAddressWriteStep, makeContractWriteStep } from "@/lib/tx-flow/steps";
+import { fetchHolderDirectory, getIncentiveTokenList, readIncentiveRewards } from "./reward-data";
 
 type ExitState = {
   amount: bigint;
@@ -26,22 +27,12 @@ type ExitState = {
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
 const field = "qv:h-10 qv:w-full qv:rounded-lg qv:border qv:border-white/10 qv:bg-[#0e1018] qv:px-3 qv:text-[11px] qv:text-[#f0f0f6] qv:outline-none qv:focus:border-[rgba(141,120,255,0.65)]";
 const primary = "qv:inline-flex qv:h-10 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-4 qv:text-[10px] qv:font-semibold qv:text-white qv:transition qv:hover:brightness-110 qv:disabled:cursor-not-allowed qv:disabled:opacity-40";
-const stakingPrecompileAbi = parseAbi(["function getEpoch() returns (uint64 epoch, bool inEpochDelayPeriod)"]);
-
-async function readCurrentEpoch(publicClient: PublicClient) {
-  const result = await publicClient.call({
-    to: "0x0000000000000000000000000000000000001000",
-    data: encodeFunctionData({ abi: stakingPrecompileAbi, functionName: "getEpoch" }),
-  });
-  if (!result.data) throw new Error("Monad did not return the current staking epoch.");
-  const [epoch] = decodeFunctionResult({ abi: stakingPrecompileAbi, functionName: "getEpoch", data: result.data }) as readonly [bigint, boolean];
-  return epoch;
-}
+const rewardAbi = parseAbi(["function getReward(uint256 tokenId, address[] tokens)"]);
 
 async function readExitState(publicClient: PublicClient, tokenId: bigint, vaults: Address[]): Promise<ExitState> {
   const escrow = getContractConfig(protocolChain.id, "VeMON");
   const controller = getContractConfig(protocolChain.id, "StakingController");
-  if (!escrow || !controller) throw new Error("veMON contracts are not configured on Monad Testnet.");
+  if (!escrow || !controller) throw new Error(`veMON contracts are not configured on ${protocolChain.name}.`);
   const [locked, currentEpoch] = await Promise.all([
     publicClient.readContract({ address: escrow.address, abi: escrow.abi, functionName: "locked", args: [tokenId] }),
     readCurrentEpoch(publicClient),
@@ -124,12 +115,13 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
   const hasTargetAllocations = Boolean(state?.validators.some((validator) => validator.intent > BigInt(0)));
   const readyToUnstake = Boolean(state?.validators.filter((validator) => validator.intent > BigInt(0))
     .every((validator) => validator.allocation >= validator.intent && validator.pending === BigInt(0)));
-  const currentCycle = state ? state.currentEpoch / BigInt(5) : BigInt(0);
+  const currentCycle = state ? epochToCycle(state.currentEpoch) : BigInt(0);
   const canRequestUnstake = Boolean(state && hasTargetAllocations && readyToUnstake && currentCycle > state.lastCycle);
   const settlementComplete = state?.fullyUnstaked === true;
   const unlockReached = Boolean(state && !state.permanent && state.currentEpoch >= state.endEpoch);
   const canWithdraw = Boolean(state && unlockReached && settlementComplete && incentiveQuery.isSuccess && pendingIncentives.length === 0);
   const targets = state?.validators.filter((validator) => validator.intent > BigInt(0)) ?? [];
+  const incentiveGroups = useMemo(() => getIncentiveTokenList(pendingIncentives), [pendingIncentives]);
   const unstakeSteps = useMemo(() => targets.length ? [makeContractWriteStep({
     key: `unstake-all-${selectedTokenId}`,
     label: "Begin full unstaking",
@@ -154,6 +146,15 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
     args: [BigInt(selectedTokenId || "0")],
     displayLabelBtn: true,
   })], [selectedTokenId]);
+  const incentiveClaimSteps = useMemo(() => incentiveGroups.map((group) => makeAddressWriteStep({
+    key: `exit-claim-incentive-${group.bribe}-${selectedTokenId}`,
+    label: `Claim ${group.label} incentives`,
+    address: group.bribe,
+    abi: rewardAbi,
+    functionName: "getReward",
+    args: [BigInt(selectedTokenId || "0"), group.tokens],
+    displayLabelBtn: true,
+  })), [incentiveGroups, selectedTokenId]);
   const withdrawSteps = useMemo(() => [makeContractWriteStep({
     key: `redeem-exited-position-${selectedTokenId}`,
     label: "Redeem MON and close position",
@@ -218,7 +219,18 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
                             {hasTargetAllocations && !readyToUnstake && <TransactionButton className={primary} onComplete={() => { setMessage("Stake settlement advanced. Retry after the allocation and pending status update."); void refresh(); }} onError={(error) => setMessage(error)} steps={pokeSteps}>Settle stake before exit <ArrowRight size={13} /></TransactionButton>}
                             {!hasTargetAllocations && !settlementComplete && <TransactionButton className={primary} onComplete={() => { setMessage("Settlement checked. Refresh after the next Monad epoch if funds remain pending."); void refresh(); }} onError={(error) => setMessage(error)} steps={pokeSteps}>Continue settlement <ArrowRight size={13} /></TransactionButton>}
                             {state.permanent && <TransactionButton className={primary} onComplete={() => { setMessage("Permanent position converted to a finite lock."); void refresh(); }} onError={(error) => setMessage(error)} steps={unlockPermanentSteps}>Convert to finite lock <Clock3 size={13} /></TransactionButton>}
-                            {!state.permanent && unlockReached && settlementComplete && ((incentiveQuery.isSuccess && pendingIncentives.length > 0) || incentiveQuery.isError) && <Link className="qv:inline-flex qv:h-10 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-4 qv:text-[10px] qv:font-semibold qv:text-[#d7d3eb] qv:no-underline" href={`/rewards?tokenId=${selectedTokenId}`}>{incentiveQuery.isError ? "Retry reward check" : "Claim incentives"} <ArrowRight size={13} /></Link>}
+                            {!state.permanent && unlockReached && settlementComplete && incentiveQuery.isSuccess && pendingIncentives.length > 0 && incentiveClaimSteps.map((step) => (
+                              <TransactionButton
+                                key={step.key}
+                                className={primary}
+                                onComplete={() => { setMessage("Incentive claimed. Continue until no rewards remain, then redeem."); void refresh(); }}
+                                onError={(error) => setMessage(error)}
+                                steps={[step]}
+                              >
+                                {step.label} <ArrowRight size={13} />
+                              </TransactionButton>
+                            ))}
+                            {!state.permanent && unlockReached && settlementComplete && incentiveQuery.isError && <Link className="qv:inline-flex qv:h-10 qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-4 qv:text-[10px] qv:font-semibold qv:text-[#d7d3eb] qv:no-underline" href={`/rewards?tokenId=${selectedTokenId}`}>Retry reward check <ArrowRight size={13} /></Link>}
                             {!state.permanent && <TransactionButton className={primary} disabled={!canWithdraw} onComplete={() => { setMessage("Position redeemed. Refreshing your veMON positions…"); void refresh(); }} onError={(error) => setMessage(error)} steps={withdrawSteps}>Redeem MON and close position <ArrowDownToLine size={13} /></TransactionButton>}
                           </div>
                           {hasTargetAllocations && readyToUnstake && currentCycle <= state.lastCycle && <p className="qv:mt-3 qv:flex qv:items-center qv:gap-2 qv:text-[9px] qv:text-[#e7c27f]"><Clock3 size={12} />Unstaking is available in the next Quevra cycle. Current cycle {currentCycle}; last allocation cycle {state.lastCycle}.</p>}

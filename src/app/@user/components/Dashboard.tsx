@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
-import { Activity, ArrowUpRight, ExternalLink, Gauge, Plus, Sparkles, Wallet } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Check, ExternalLink, Gauge, Plus, Sparkles, Wallet } from "lucide-react";
 import { formatEther, type Address, type Hex } from "viem";
 import { explorerTxUrl, protocolChain } from "@/lib/web3";
 import { getContractConfig } from "@/contracts/shared";
@@ -95,13 +96,13 @@ export default function Dashboard() {
     setSigningRequest(null);
     if (validatorMode === "existing") return;
     if (!address || chain?.id !== protocolChain.id || !publicClient) {
-      setCreationError("Connect a wallet on Monad Testnet to prepare a new validator request.");
+      setCreationError(`Connect a wallet on ${protocolChain.name} to prepare a new validator request.`);
       return;
     }
 
     const controller = getContractConfig(protocolChain.id, "StakingController");
     if (!controller?.address) {
-      setCreationError("The staking controller is not configured for Monad Testnet.");
+      setCreationError(`The staking controller is not configured for ${protocolChain.name}.`);
       return;
     }
 
@@ -162,7 +163,7 @@ export default function Dashboard() {
   async function refreshRegistrationConfig() {
     if (!address || !saltSeed || chain?.id !== protocolChain.id || !publicClient) throw new Error(`Reconnect the operator wallet to ${protocolChain.name} before submitting.`);
     const controller = getContractConfig(protocolChain.id, "StakingController");
-    if (!controller?.address) throw new Error("The staking controller is not configured for Monad Testnet.");
+    if (!controller?.address) throw new Error(`The staking controller is not configured for ${protocolChain.name}.`);
     const [auth, freshCommission, amount] = await publicClient.readContract({
       address: controller.address,
       abi: controller.abi,
@@ -239,7 +240,7 @@ export default function Dashboard() {
     <div className="qv:mx-auto qv:w-full qv:min-w-0 qv:max-w-[1260px] qv:space-y-5">
       <header className="qv:mb-6 qv:flex qv:items-end qv:justify-between qv:gap-5">
         <div>
-          <div className="qv:flex qv:items-center qv:gap-2 qv:text-[10px] qv:font-bold qv:tracking-[0.13em] qv:text-[#9e91eb]"><span className="qv:size-1.5 qv:rounded-full qv:bg-[#52ddc3]" /> QUEVRA · MONAD TESTNET</div>
+          <div className="qv:flex qv:items-center qv:gap-2 qv:text-[10px] qv:font-bold qv:tracking-[0.13em] qv:text-[#9e91eb]"><span className="qv:size-1.5 qv:rounded-full qv:bg-[#52ddc3]" /> QUEVRA · {protocolChain.name.toUpperCase()}</div>
           <h1 className="qv:mb-1.5 qv:mt-3 qv:text-[26px] qv:font-semibold qv:tracking-[-0.045em] qv:text-[#f2f2f8] qv:sm:text-[34px]">Your onchain portfolio</h1>
           <p className="qv:m-0 qv:max-w-[265px] qv:text-[11px] qv:leading-relaxed qv:text-[#b0b3c3] qv:sm:max-w-none qv:sm:text-[13px]">Track staking, rewards, and gauge activity from one place.</p>
         </div>
@@ -249,9 +250,9 @@ export default function Dashboard() {
         <div className="qv:relative qv:z-10 qv:flex qv:flex-wrap qv:items-center qv:justify-between qv:gap-x-3 qv:gap-y-2">
           <div className="qv:flex qv:min-w-0 qv:items-center qv:gap-3">
             <span className="qv:block qv:text-xs qv:text-[#c1bbdf]">Portfolio overview</span>
-            <span className="qv:inline-flex qv:items-center qv:gap-1.5 qv:rounded-full qv:border qv:border-[rgba(82,221,195,0.22)] qv:px-2 qv:py-1 qv:text-[9px] qv:font-bold qv:tracking-[0.08em] qv:text-[#8de5d4]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> TESTNET</span>
+            <span className="qv:inline-flex qv:items-center qv:gap-1.5 qv:rounded-full qv:border qv:border-[rgba(82,221,195,0.22)] qv:px-2 qv:py-1 qv:text-[9px] qv:font-bold qv:tracking-[0.08em] qv:text-[#8de5d4]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> {protocolChain.testnet ? "TESTNET" : "MAINNET"}</span>
           </div>
-          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">{`Monad · chain ${protocolChain.id}`}</span>
+          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">{`${protocolChain.name} · chain ${protocolChain.id}`}</span>
         </div>
         <div className="qv:relative qv:z-10 qv:mt-7 qv:flex qv:flex-wrap qv:items-end qv:justify-between qv:gap-4">
           <div className="qv:min-w-0">
@@ -281,6 +282,63 @@ export default function Dashboard() {
             <div className="qv:col-span-2 qv:mt-2 qv:flex qv:min-w-0 qv:items-start qv:gap-1 qv:wrap-anywhere qv:text-[9px] qv:leading-[1.35] qv:text-[#aeb1c1] qv:sm:mt-0 qv:sm:items-center qv:sm:text-[10px]">{trend === "up" ? <ArrowUpRight className="qv:shrink-0 qv:text-[#52ddc3]" size={14} /> : <Activity className="qv:shrink-0 qv:text-[#52ddc3]" size={14} />}{note}</div>
           </article>
         ))}
+      </section>
+
+      <section aria-label="Product journey" className={`${panelClass} qv:p-[17px_15px] qv:sm:p-5`}>
+        <div className="qv:flex qv:flex-wrap qv:items-start qv:justify-between qv:gap-3">
+          <div>
+            <span className={kickerClass}>HOLDER JOURNEY</span>
+            <h2 className={panelTitleClass}>Lock → stake → earn → exit</h2>
+            <p className="qv:mt-1 qv:max-w-[640px] qv:text-[11px] qv:leading-[1.65] qv:text-[#b0b2c2]">
+              Follow the Quevra product path. Allocations are your validator vote; incentives and native staking rewards accrue by cycle.
+            </p>
+          </div>
+          <div className="qv:flex qv:flex-wrap qv:gap-2">
+            <Link className="qv:inline-flex qv:h-9 qv:items-center qv:gap-1.5 qv:rounded-lg qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#d7d3eb] qv:no-underline qv:hover:bg-white/[0.07]" href="/rewards">
+              Open rewards <ArrowRight size={12} />
+            </Link>
+            <Link className="qv:inline-flex qv:h-9 qv:items-center qv:gap-1.5 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-white qv:no-underline qv:hover:brightness-110" href="/stake">
+              Manage stake <ArrowRight size={12} />
+            </Link>
+          </div>
+        </div>
+        <ol className="qv:mt-4 qv:grid qv:gap-2 qv:sm:grid-cols-2 qv:xl:grid-cols-3">
+          {[
+            { step: "1", title: "Lock MON", done: indexedVeMonPositions.length > 0, href: "/lock", detail: "Create a veMON position" },
+            { step: "2", title: "Back validators", done: indexedVeMonPositions.length > 0, href: "/stake", detail: "Allocate principal to vaults" },
+            { step: "3", title: "Vote by staking", done: indexedVeMonPositions.length > 0, href: "/stake", detail: "Allocation weight is your vote" },
+            { step: "4", title: "Earn & claim", done: false, href: "/rewards", detail: "Native MON + ERC-20 incentives" },
+            { step: "5", title: "Reallocate / poke", done: false, href: "/stake", detail: "Once per Quevra cycle" },
+            { step: "6", title: "Exit cleanly", done: false, href: "/exit", detail: "Unstake, claim bribes, then redeem" },
+          ].map((item) => (
+            <li key={item.step}>
+              <Link
+                className="qv:flex qv:items-start qv:gap-3 qv:rounded-lg qv:border qv:border-white/[0.06] qv:bg-[#0e1018] qv:p-3 qv:no-underline qv:transition qv:hover:border-[rgba(141,120,255,0.35)]"
+                href={item.href}
+              >
+                <span className={`qv:mt-0.5 qv:grid qv:size-6 qv:shrink-0 qv:place-items-center qv:rounded-full qv:text-[10px] qv:font-bold ${item.done ? "qv:bg-[rgba(82,221,195,0.16)] qv:text-[#8de5d4]" : "qv:bg-[rgba(141,120,255,0.14)] qv:text-[#c5bbff]"}`}>
+                  {item.done ? <Check size={12} /> : item.step}
+                </span>
+                <span className="qv:min-w-0">
+                  <span className="qv:block qv:text-[12px] qv:font-semibold qv:text-[#e9e9f1]">{item.title}</span>
+                  <span className="qv:mt-0.5 qv:block qv:text-[9px] qv:leading-4 qv:text-[#9295a7]">{item.detail}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+        <div className="qv:mt-4 qv:flex qv:flex-wrap qv:items-center qv:justify-between qv:gap-3 qv:rounded-lg qv:border qv:border-[rgba(141,120,255,0.16)] qv:bg-[rgba(141,120,255,0.055)] qv:px-3 qv:py-3">
+          <div>
+            <p className="qv:text-[10px] qv:font-semibold qv:text-[#d7d0ff]">Earn strip</p>
+            <p className="qv:mt-0.5 qv:text-[9px] qv:leading-4 qv:text-[#b5b1d0]">
+              Claim native staking rewards and validator incentives from Rewards. Operators fund bribes on Incentives and gauge emissions on My validators.
+            </p>
+          </div>
+          <div className="qv:flex qv:flex-wrap qv:gap-2">
+            <Link className="qv:inline-flex qv:h-8 qv:items-center qv:gap-1 qv:rounded-md qv:border qv:border-white/10 qv:bg-[#12141d] qv:px-2.5 qv:text-[9px] qv:font-semibold qv:text-[#d7d3eb] qv:no-underline" href="/incentives">Fund bribes</Link>
+            <Link className="qv:inline-flex qv:h-8 qv:items-center qv:gap-1 qv:rounded-md qv:border qv:border-white/10 qv:bg-[#12141d] qv:px-2.5 qv:text-[9px] qv:font-semibold qv:text-[#d7d3eb] qv:no-underline" href="/validators">My validators</Link>
+          </div>
+        </div>
       </section>
 
       <div className="qv:grid qv:min-w-0 qv:grid-cols-1 qv:gap-4 qv:lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.9fr)]">

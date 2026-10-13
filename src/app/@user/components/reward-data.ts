@@ -71,7 +71,7 @@ export async function readNativeRewards(
   }
   const controller = getContractConfig(protocolChain.id, "StakingController");
   const vault = getContractConfig(protocolChain.id, "StakingVault");
-  if (!controller || !vault) throw new Error("Staking contracts are not configured on Monad Testnet.");
+  if (!controller || !vault) throw new Error(`Staking contracts are not configured on ${protocolChain.name}.`);
 
   const agent = await publicClient.readContract({
     address: controller.address,

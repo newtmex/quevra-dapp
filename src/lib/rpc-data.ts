@@ -78,7 +78,7 @@ async function multicallInBatches(publicClient: PublicClient, contracts: Array<R
 export async function fetchHolderDirectory(publicClient: PublicClient, wallet: Address): Promise<HolderDirectory> {
   const veMon = getContractConfig(protocolChain.id, "VeMON");
   const veValidator = getContractConfig(protocolChain.id, "VeValidator");
-  if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
+  if (!veMon || !veValidator) throw new Error(`Quevra contracts are not configured on ${protocolChain.name}.`);
 
   const [veMonNextId, veValidatorNextId] = await Promise.all([
     publicClient.readContract({ address: veMon.address, abi: veMon.abi, functionName: "nextId" }) as Promise<bigint>,
@@ -147,7 +147,7 @@ export async function fetchHolderDirectory(publicClient: PublicClient, wallet: A
 export async function fetchWalletActivity(publicClient: PublicClient, wallet: Address): Promise<WalletActivity[]> {
   const veMon = getContractConfig(protocolChain.id, "VeMON");
   const veValidator = getContractConfig(protocolChain.id, "VeValidator");
-  if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
+  if (!veMon || !veValidator) throw new Error(`Quevra contracts are not configured on ${protocolChain.name}.`);
   const latestBlock = await publicClient.getBlockNumber();
   const fromBlock = latestBlock >= logBlockSpan ? latestBlock - logBlockSpan + BigInt(1) : BigInt(0);
   const [monLogs, validatorLogs] = await Promise.all([
