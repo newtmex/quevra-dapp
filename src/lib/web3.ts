@@ -1,5 +1,10 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { injectedWallet } from "@rainbow-me/rainbowkit/wallets";
+import { connectorsForWallets, getDefaultConfig } from "@rainbow-me/rainbowkit";
+import {
+  injectedWallet,
+  metaMaskWallet,
+  walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
+import { rainbowkitBurnerWallet } from "burner-connector";
 import { defineChain, http, type Chain } from "viem";
 import { createConfig, type Config } from "wagmi";
 
@@ -36,6 +41,40 @@ export const protocolChain: Chain =
 
 export const supportedChains = [protocolChain, protocolChain.id === monadSolonet.id ? monadTestnet : monadSolonet] as const;
 
+export const burnerWalletEnabled =
+  process.env.NEXT_PUBLIC_ENABLE_BURNER_WALLET === "true"
+  || process.env.NEXT_PUBLIC_ENABLE_BURNER_WALLET === "1"
+  || protocolChain.id === monadSolonet.id;
+
+export const faucetEnabled =
+  process.env.NEXT_PUBLIC_ENABLE_FAUCET === "true"
+  || process.env.NEXT_PUBLIC_ENABLE_FAUCET === "1"
+  || protocolChain.id === monadSolonet.id;
+
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
+
+function buildWalletGroups() {
+  const browserWallets = walletConnectProjectId
+    ? [metaMaskWallet, walletConnectWallet, injectedWallet]
+    : [injectedWallet, metaMaskWallet];
+
+  if (!burnerWalletEnabled) {
+    return [{ groupName: "Browser wallets", wallets: browserWallets }];
+  }
+
+  // Scaffold-ETH Monad pattern: burner-connector RainbowKit wallet for local/dev testing.
+  rainbowkitBurnerWallet.rpcUrls = {
+    ...(rainbowkitBurnerWallet.rpcUrls ?? {}),
+    [monadSolonet.id]: monadSolonet.rpcUrls.default.http[0],
+    [monadTestnet.id]: monadTestnet.rpcUrls.default.http[0],
+  };
+
+  return [
+    { groupName: "Dev wallets", wallets: [rainbowkitBurnerWallet] },
+    { groupName: "Browser wallets", wallets: browserWallets },
+  ];
+}
+
 let browserConfig: Config | undefined;
 let serverConfig: Config | undefined;
 
@@ -54,19 +93,33 @@ export function getWagmiConfig(): Config {
     return serverConfig;
   }
 
-  browserConfig ??= getDefaultConfig({
-    appName: "Quevra",
-    // WalletConnect requires a project ID issued by Reown. Until one is
-    // configured, expose injected browser wallets without making a failing
-    // request with a placeholder ID.
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
-    ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
-      ? {}
-      : { wallets: [{ groupName: "Browser wallets", wallets: [injectedWallet] }] }),
-    chains: supportedChains,
-    transports,
-    ssr: true,
-  });
+  if (!browserConfig) {
+    if (burnerWalletEnabled) {
+      const connectors = connectorsForWallets(buildWalletGroups(), {
+        appName: "Quevra",
+        projectId: walletConnectProjectId || "quevra-local-burner",
+      });
+      browserConfig = createConfig({
+        chains: supportedChains,
+        connectors,
+        transports,
+        ssr: true,
+        multiInjectedProviderDiscovery: false,
+      });
+    } else {
+      browserConfig = getDefaultConfig({
+        appName: "Quevra",
+        projectId: walletConnectProjectId || "",
+        ...(walletConnectProjectId
+          ? {}
+          : { wallets: [{ groupName: "Browser wallets", wallets: [injectedWallet] }] }),
+        chains: supportedChains,
+        transports,
+        ssr: true,
+      });
+    }
+  }
+
   return browserConfig;
 }
 

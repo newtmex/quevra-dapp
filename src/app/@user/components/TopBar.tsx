@@ -1,3 +1,7 @@
+"use client";
+
+import { faucetEnabled, protocolChain } from "@/lib/web3";
+import FaucetButton from "./FaucetButton";
 import WalletButton from "./WalletButton";
 
 export default function TopBar() {
@@ -12,8 +16,9 @@ export default function TopBar() {
       </div>
       <div className="qv:flex qv:items-center qv:gap-3.5">
         <span className="qv:hidden qv:items-center qv:gap-2 qv:rounded-full qv:border qv:border-white/[0.075] qv:px-3 qv:py-[9px] qv:text-xs qv:text-[#c1c2ce] qv:sm:inline-flex">
-          <i className="qv:size-[7px] qv:rounded-full qv:bg-[#52ddc3] qv:shadow-[0_0_10px_rgba(82,221,195,0.5)]" /> Monad Testnet
+          <i className="qv:size-[7px] qv:rounded-full qv:bg-[#52ddc3] qv:shadow-[0_0_10px_rgba(82,221,195,0.5)]" /> {protocolChain.name}
         </span>
+        {faucetEnabled ? <FaucetButton /> : null}
         <WalletButton />
       </div>
     </header>
