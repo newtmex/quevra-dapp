@@ -21,7 +21,10 @@ export const monadSolonet = defineChain({
   name: "Monad Solonet",
   nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_SOLONET_RPC_URL || "http://127.0.0.1:48080"] },
+    // Prefer the nginx /rpc/ front on :48082 — it sends Access-Control-Allow-Origin
+    // so browser wallets/viem can call Solonet from the Next.js origin. Direct :48080
+    // works from curl/cast but is blocked by CORS in the browser.
+    default: { http: [process.env.NEXT_PUBLIC_SOLONET_RPC_URL || "http://127.0.0.1:48082/rpc/"] },
   },
   testnet: true,
 });
