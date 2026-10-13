@@ -11,7 +11,7 @@ import { useTxFlowRuntime } from "./runtime";
 import { executePreparedWriteStep, getParsedTransactionError } from "./execute";
 import type { TxIconState, TxStep, TxStepBuilder, TxStepResult } from "./types";
 
-type Props = Omit<ComponentPropsWithoutRef<"button">, "children" | "onClick"> & {
+type Props = Omit<ComponentPropsWithoutRef<"button">, "children" | "onClick" | "onError"> & {
   steps: TxStep[] | TxStepBuilder;
   children: ReactNode;
   icon?: ReactNode;

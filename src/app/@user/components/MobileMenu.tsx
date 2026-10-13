@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { KeyRound, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { networkSections } from "./MainMenu";
 
 export default function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="qv:flex qv:flex-col qv:border-b qv:border-white/[0.075] qv:bg-[#0e0f16] qv:lg:hidden">
@@ -29,15 +31,13 @@ export default function MobileMenu() {
       <nav aria-label="Main navigation" className={`${open ? "qv:block" : "qv:hidden"} qv:border-t qv:border-white/[0.075] qv:px-3 qv:py-3`}>
           {networkSections.map((section) => (
             <Link
-              aria-current={section.active ? "page" : undefined}
-              aria-disabled={!section.active || undefined}
-              className="qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:bg-[rgba(141,120,255,0.12)] qv:px-3 qv:text-[13px] qv:font-medium qv:text-[#c5bbff] qv:no-underline"
+              aria-current={(section.href === "/" ? pathname === "/" : pathname.startsWith(section.href)) ? "page" : undefined}
+              className={`qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:px-3 qv:text-[13px] qv:font-medium qv:no-underline ${((section.href === "/" && pathname === "/") || (section.href !== "/" && pathname.startsWith(section.href))) ? "qv:bg-[rgba(141,120,255,0.12)] qv:text-[#c5bbff]" : "qv:text-[#b0b2c2]"}`}
               href={section.href}
               key={section.label}
               onClick={() => setOpen(false)}
-              tabIndex={section.active ? undefined : -1}
             >
-              <LayoutDashboard aria-hidden="true" size={17} className="qv:text-[#a99aff]" />
+              {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
               <span>{section.label}</span>
             </Link>
           ))}

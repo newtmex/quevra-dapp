@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { KeyRound, LayoutDashboard } from "lucide-react";
 
 export const networkSections = [
-  { href: "/", icon: "layout", label: "Dashboard", active: true },
+  { href: "/", icon: "layout", label: "Dashboard" },
+  { href: "/lock", icon: "lock", label: "Lock veMON" },
 ];
 
 export default function MainMenu() {
+  const pathname = usePathname();
   return (
     <aside className="qv:hidden qv:w-[260px] qv:shrink-0 qv:border-r qv:border-white/[0.075] qv:bg-[#0e0f16] qv:lg:flex qv:lg:flex-col">
       <div className="qv:flex qv:h-[76px] qv:items-center qv:border-b qv:border-white/[0.075] qv:px-6">
@@ -19,14 +24,12 @@ export default function MainMenu() {
         <p className="qv:mb-2 qv:px-3 qv:pt-3 qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.14em] qv:text-[#aeb0c0]">Network</p>
         {networkSections.map((section) => (
           <Link
-            aria-current={section.active ? "page" : undefined}
-            aria-disabled={!section.active || undefined}
-            className={`qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:px-3 qv:text-[13px] qv:font-medium qv:no-underline qv:transition-colors ${section.active ? "qv:bg-[rgba(141,120,255,0.12)] qv:text-[#c5bbff]" : "qv:text-[#b0b2c2] qv:hover:bg-white/[0.04] qv:hover:text-white"}`}
+            aria-current={(section.href === "/" ? pathname === "/" : pathname.startsWith(section.href)) ? "page" : undefined}
+            className={`qv:flex qv:min-h-11 qv:items-center qv:gap-3 qv:rounded-lg qv:px-3 qv:text-[13px] qv:font-medium qv:no-underline qv:transition-colors ${((section.href === "/" && pathname === "/") || (section.href !== "/" && pathname.startsWith(section.href))) ? "qv:bg-[rgba(141,120,255,0.12)] qv:text-[#c5bbff]" : "qv:text-[#b0b2c2] qv:hover:bg-white/[0.04] qv:hover:text-white"}`}
             href={section.href}
             key={section.label}
-            tabIndex={section.active ? undefined : -1}
           >
-            <LayoutDashboard aria-hidden="true" size={17} className={section.active ? "qv:text-[#a99aff]" : ""} />
+            {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
             <span>{section.label}</span>
           </Link>
         ))}
