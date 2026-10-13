@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type { Address } from "viem";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import { WalletButton } from "@/app/@user/components/WalletButton";
 import { useTxFlowRuntime } from "./runtime";
 import { executePreparedWriteStep, getParsedTransactionError } from "./execute";
@@ -37,7 +37,7 @@ const TransactionButton = forwardRef<TransactionButtonHandle, Props>(function Tr
   const [iconState, setIconState] = useState<TxIconState>("idle");
 
   const run = async () => {
-    if (!address || !chain || !publicClient || chain.id !== monadTestnet.id || running || disabled) return;
+    if (!address || !chain || !publicClient || chain.id !== protocolChain.id || running || disabled) return;
     const results: TxStepResult[] = [];
     let activeStep: TxStep | undefined;
     setRunning(true);
@@ -100,7 +100,7 @@ const TransactionButton = forwardRef<TransactionButtonHandle, Props>(function Tr
         className={className ?? "qv:mt-0.5 qv:inline-flex qv:h-[42px] qv:items-center qv:justify-center qv:gap-2 qv:rounded-lg qv:bg-gradient-to-r qv:from-[#8c76ff] qv:to-[#7058e9] qv:px-4 qv:text-[11px] qv:font-semibold qv:text-white qv:shadow-[0_8px_20px_rgba(112,88,233,0.2)] qv:transition qv:hover:brightness-110 qv:disabled:cursor-not-allowed qv:disabled:opacity-[0.46] qv:disabled:shadow-none"}
         type={type}
         onClick={type === "submit" ? undefined : () => void run()}
-        disabled={Boolean(disabled || running || chain?.id !== monadTestnet.id)}
+        disabled={Boolean(disabled || running || chain?.id !== protocolChain.id)}
         aria-busy={running}
       >
         {icon}

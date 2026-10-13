@@ -4,7 +4,7 @@ import {
   type PublicClient,
 } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 
 export type HolderPosition = {
   id: string;
@@ -76,8 +76,8 @@ async function multicallInBatches(publicClient: PublicClient, contracts: Array<R
 }
 
 export async function fetchHolderDirectory(publicClient: PublicClient, wallet: Address): Promise<HolderDirectory> {
-  const veMon = getContractConfig(monadTestnet.id, "VeMON");
-  const veValidator = getContractConfig(monadTestnet.id, "VeValidator");
+  const veMon = getContractConfig(protocolChain.id, "VeMON");
+  const veValidator = getContractConfig(protocolChain.id, "VeValidator");
   if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
 
   const [veMonNextId, veValidatorNextId] = await Promise.all([
@@ -145,8 +145,8 @@ export async function fetchHolderDirectory(publicClient: PublicClient, wallet: A
 }
 
 export async function fetchWalletActivity(publicClient: PublicClient, wallet: Address): Promise<WalletActivity[]> {
-  const veMon = getContractConfig(monadTestnet.id, "VeMON");
-  const veValidator = getContractConfig(monadTestnet.id, "VeValidator");
+  const veMon = getContractConfig(protocolChain.id, "VeMON");
+  const veValidator = getContractConfig(protocolChain.id, "VeValidator");
   if (!veMon || !veValidator) throw new Error("Quevra contracts are not configured on Monad Testnet.");
   const latestBlock = await publicClient.getBlockNumber();
   const fromBlock = latestBlock >= logBlockSpan ? latestBlock - logBlockSpan + BigInt(1) : BigInt(0);
@@ -164,7 +164,7 @@ async function walletTokenActivity(publicClient: PublicClient, address: Address,
   ]);
   return Array.from(new Map(logs.flat().map((log) => [`${log.transactionHash}-${log.logIndex}`, log])).values()).map((log) => {
     const args = (log as typeof log & { args: { from: Address; to: Address; tokenId: bigint } }).args;
-    const isValidator = address.toLowerCase() === getContractConfig(monadTestnet.id, "VeValidator")?.address.toLowerCase();
+    const isValidator = address.toLowerCase() === getContractConfig(protocolChain.id, "VeValidator")?.address.toLowerCase();
     const label = args.from === zeroAddress ? (isValidator ? "Validator identity created" : "veMON lock created")
       : args.to === zeroAddress ? "veMON position withdrawn"
         : "veNFT transferred";

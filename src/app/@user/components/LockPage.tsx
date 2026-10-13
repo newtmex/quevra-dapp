@@ -9,7 +9,7 @@ import { ArrowDownToLine, ArrowRight, ArrowUpRight, Clock3, KeyRound, LockKeyhol
 import { decodeEventLog, formatEther, parseEther, type Address } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
 import { fetchHolderDirectory } from "@/lib/rpc-data";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 
@@ -29,14 +29,14 @@ export default function LockPage() {
   const [cycles, setCycles] = useState("4");
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const escrow = getContractConfig(monadTestnet.id, "VeMON");
-  const metadata = getDeploymentMetadata(monadTestnet.id);
+  const escrow = getContractConfig(protocolChain.id, "VeMON");
+  const metadata = getDeploymentMetadata(protocolChain.id);
   const maxCycles = Number(metadata?.config.maxLockCycles ?? 4);
   const queryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
   const positionsQuery = useQuery({
     queryKey,
     queryFn: async () => (await fetchHolderDirectory(publicClient!, address as Address)).positions,
-    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id && escrow?.address),
+    enabled: Boolean(address && publicClient && chain?.id === protocolChain.id && escrow?.address),
     refetchInterval: 12_000,
   });
   const positions = positionsQuery.data ?? [];
@@ -45,7 +45,7 @@ export default function LockPage() {
     try { return amount.trim() ? parseEther(amount) : BigInt(0); } catch { return BigInt(0); }
   })();
   const amountValid = parsedAmount > BigInt(0) && /^\d+(\.\d{0,18})?$/.test(amount.trim());
-  const canCreate = Boolean(address && chain?.id === monadTestnet.id && escrow?.address && amountValid && Number(cycles) >= 1 && Number(cycles) <= maxCycles);
+  const canCreate = Boolean(address && chain?.id === protocolChain.id && escrow?.address && amountValid && Number(cycles) >= 1 && Number(cycles) <= maxCycles);
   const createSteps = useMemo(() => [makeContractWriteStep({
     key: "create-ve-mon-lock",
     label: "Create veMON lock",
@@ -114,7 +114,7 @@ export default function LockPage() {
             </label>
             <div className="qv:flex qv:items-start qv:gap-2 qv:rounded-lg qv:border qv:border-[rgba(141,120,255,0.16)] qv:bg-[rgba(141,120,255,0.055)] qv:p-3 qv:text-[10px] qv:leading-4 qv:text-[#b5b1d0]"><Clock3 size={14} className="qv:mt-0.5 qv:shrink-0 qv:text-[#a99aff]" />Lock duration is measured in protocol cycles, not calendar time. MON can be withdrawn after the position reaches its unlock epoch.</div>
             {formError && <p className="qv:text-[10px] qv:text-[#ff9caa]">{formError}</p>}
-            {chain && chain.id !== monadTestnet.id && <p className="qv:text-[10px] qv:text-[#ffcf7a]">Switch to Monad Testnet to create a lock.</p>}
+            {chain && chain.id !== protocolChain.id && <p className="qv:text-[10px] qv:text-[#ffcf7a]">Switch to {protocolChain.name} to create a lock.</p>}
             <TransactionButton
               disabled={!canCreate}
               onComplete={(results) => {
@@ -147,7 +147,7 @@ export default function LockPage() {
             {address && <button className="qv:text-[10px] qv:text-[#a99aff] qv:hover:text-white" onClick={() => void positionsQuery.refetch()} type="button">Refresh</button>}
           </div>
           {!address ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Connect your wallet to see your veMON positions.</div>
-            : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Switch to Monad Testnet to view your positions.</div>
+            : chain?.id !== protocolChain.id ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Switch to {protocolChain.name} to view your positions.</div>
               : positionsQuery.isPending ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading your veMON positions…</div>
                 : positionsQuery.isError ? <div className={`${panel} qv:px-5 qv:py-8 qv:text-center qv:text-[11px] qv:text-[#ff9caa]`}>{positionsQuery.error.message}</div>
                   : positions.length === 0 ? <div className={`${panel} qv:flex qv:min-h-[240px] qv:flex-col qv:items-center qv:justify-center qv:px-6 qv:text-center`}><span className="qv:grid qv:size-11 qv:place-items-center qv:rounded-xl qv:bg-[rgba(141,120,255,0.09)] qv:text-[#a99aff]"><LockKeyhole size={19} /></span><p className="qv:mt-4 qv:text-[13px] qv:font-semibold qv:text-[#e9e9f1]">No locks yet</p><p className="qv:mt-1 qv:max-w-[260px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">Create a lock to receive veMON voting power and start managing your positions here.</p></div>

@@ -8,7 +8,7 @@ import { ArrowRight, Check, CircleAlert, LoaderCircle, Search, ShieldCheck, Wall
 import { formatEther, parseEther, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
 import { fetchHolderDirectory, type HolderPosition, type HolderValidator } from "@/lib/rpc-data";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 
@@ -84,13 +84,13 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const initializedPosition = useRef("");
-  const escrow = getContractConfig(monadTestnet.id, "VeMON");
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
+  const escrow = getContractConfig(protocolChain.id, "VeMON");
+  const controller = getContractConfig(protocolChain.id, "StakingController");
   const directoryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
   const directoryQuery = useQuery({
     queryKey: directoryKey,
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
   const positions = directoryQuery.data?.positions ?? [];
@@ -136,7 +136,7 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
     return Boolean(state && (state.pending > BigInt(0) || state.intent !== state.allocation));
   });
   const withinBalance = totalTarget <= maxAllocation;
-  const canSubmit = Boolean(address && chain?.id === monadTestnet.id && selectedTokenId && stakeRows.length && withinBalance && controller?.address);
+  const canSubmit = Boolean(address && chain?.id === protocolChain.id && selectedTokenId && stakeRows.length && withinBalance && controller?.address);
   const steps = useMemo(() => [makeContractWriteStep({
     key: `set-stake-allocation-${selectedTokenId}`,
     label: "Set validator allocation",
@@ -181,7 +181,7 @@ export default function StakePage({ initialTokenId }: { initialTokenId?: string 
       </header>
 
       {!address ? <div className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={17} className="qv:text-[#a99aff]" />Connect a wallet to choose a veMON position and validator allocation.</div>
-        : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to stake.</div>
+        : chain?.id !== protocolChain.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to {protocolChain.name} to stake.</div>
           : directoryQuery.isPending ? <div className={`${panel} qv:p-8 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading positions and validator vaults…</div>
             : directoryQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
               : initialTokenId && !selectedPosition ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><LoaderCircle size={19} className="qv:animate-spin qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">Your new lock is syncing</p><p className="qv:mt-1 qv:max-w-[300px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">The lock transaction is confirmed. Waiting for Monad RPC to return position #{initialTokenId}.</p></div>

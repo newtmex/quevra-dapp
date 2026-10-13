@@ -1,7 +1,7 @@
 import { decodeFunctionResult, encodeFunctionData, formatUnits, parseAbi, type Address, type PublicClient } from "viem";
 import { erc20Abi } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import type { HolderValidator } from "@/lib/rpc-data";
 export type { HolderPosition, HolderValidator, HolderDirectory } from "@/lib/rpc-data";
 export { fetchHolderDirectory } from "@/lib/rpc-data";
@@ -69,8 +69,8 @@ export async function readNativeRewards(
   if (!validators.some((validator) => validator.vault)) {
     return { amount: BigInt(0), vaults: [] as Address[], claimCandidates: 0 };
   }
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
-  const vault = getContractConfig(monadTestnet.id, "StakingVault");
+  const controller = getContractConfig(protocolChain.id, "StakingController");
+  const vault = getContractConfig(protocolChain.id, "StakingVault");
   if (!controller || !vault) throw new Error("Staking contracts are not configured on Monad Testnet.");
 
   const agent = await publicClient.readContract({

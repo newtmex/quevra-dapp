@@ -7,7 +7,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowDownToLine, ArrowRight, CircleAlert, Clock3, LoaderCircle, ShieldCheck, Wallet } from "lucide-react";
 import { decodeFunctionResult, encodeFunctionData, formatEther, parseAbi, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeContractWriteStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory, readIncentiveRewards } from "./reward-data";
@@ -39,8 +39,8 @@ async function readCurrentEpoch(publicClient: PublicClient) {
 }
 
 async function readExitState(publicClient: PublicClient, tokenId: bigint, vaults: Address[]): Promise<ExitState> {
-  const escrow = getContractConfig(monadTestnet.id, "VeMON");
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
+  const escrow = getContractConfig(protocolChain.id, "VeMON");
+  const controller = getContractConfig(protocolChain.id, "StakingController");
   if (!escrow || !controller) throw new Error("veMON contracts are not configured on Monad Testnet.");
   const [locked, currentEpoch] = await Promise.all([
     publicClient.readContract({ address: escrow.address, abi: escrow.abi, functionName: "locked", args: [tokenId] }),
@@ -94,7 +94,7 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
   const positions = directoryQuery.data?.positions ?? [];
@@ -110,13 +110,13 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
   const stateQuery = useQuery({
     queryKey: ["exit-position", address?.toLowerCase(), selectedTokenId, vaults.join(",")],
     queryFn: () => readExitState(publicClient!, BigInt(selectedTokenId), vaults),
-    enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === monadTestnet.id),
+    enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === protocolChain.id),
     refetchInterval: 12_000,
   });
   const incentiveQuery = useQuery({
     queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.bribe).join(",")],
     queryFn: () => readIncentiveRewards(publicClient!, validators, BigInt(selectedTokenId)),
-    enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === monadTestnet.id),
+    enabled: Boolean(publicClient && selected && selectedTokenId && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
   });
   const state = stateQuery.data;
@@ -183,7 +183,7 @@ export default function ExitPage({ initialTokenId }: { initialTokenId?: string }
       </header>
 
       {!address ? <div className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={17} className="qv:text-[#a99aff]" />Connect a wallet to manage position exits.</div>
-        : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to exit a position.</div>
+        : chain?.id !== protocolChain.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to {protocolChain.name} to exit a position.</div>
           : directoryQuery.isPending ? <div className={`${panel} qv:p-8 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading your positions…</div>
             : directoryQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
               : positions.length === 0 ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><Wallet size={20} className="qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">No veMON positions found</p><Link className="qv:mt-3 qv:inline-flex qv:items-center qv:gap-2 qv:text-[10px] qv:text-[#bdb2ff] qv:no-underline" href="/lock">Go to locks <ArrowRight size={13} /></Link></div>

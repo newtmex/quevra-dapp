@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CircleAlert, ExternalLink, Info, LoaderCircle, X } from "lucide-react";
+import { explorerTxUrl } from "@/lib/web3";
 import { useNotificationStore } from "./store";
 
 const icons = {
@@ -17,11 +18,6 @@ const toastStyles = {
   success: "qv:border-[#285e56] qv:bg-[#1c3835] qv:text-[#68ddc3]",
   error: "qv:border-[#713843] qv:bg-[#3b252c] qv:text-[#ff8293]",
 } as const;
-
-function explorerUrl(chainId: number | undefined, hash: `0x${string}`) {
-  if (chainId === 10143) return `https://testnet.monadexplorer.com/tx/${hash}`;
-  return null;
-}
 
 export function NotificationsToaster() {
   const items = useNotificationStore((state) => state.items);
@@ -50,7 +46,7 @@ function NotificationToast({ item }: { item: ReturnType<typeof useNotificationSt
     };
   }, [dismissAfterMs, hovered, item.id, item.persistent, remove]);
 
-  const url = item.txHash ? explorerUrl(item.chainId, item.txHash) : null;
+  const url = item.txHash ? explorerTxUrl(item.chainId, item.txHash) : null;
   return (
     <article className={`qv:flex qv:items-start qv:gap-3 qv:rounded-xl qv:border qv:p-[13px_15px] qv:shadow-[0_15px_45px_rgba(0,0,0,0.4)] qv:backdrop-blur-xl ${toastStyles[item.type]}`} role="status" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <span className="qv:grid qv:size-6 qv:flex-none qv:place-items-center qv:rounded-lg qv:bg-white/10"><Icon size={15} className={item.type === "pending" ? "qv:animate-spin" : ""} /></span>

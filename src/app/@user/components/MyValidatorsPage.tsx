@@ -6,7 +6,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowRight, BadgeCheck, CircleAlert, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
 import { decodeFunctionResult, encodeFunctionData, formatEther, parseAbi, type Address, type PublicClient } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import { fetchHolderDirectory, type HolderValidator } from "@/lib/rpc-data";
 
 const panel = "qv:rounded-[14px] qv:border qv:border-white/[0.075] qv:bg-[#12141d]";
@@ -45,8 +45,8 @@ function progressPercent(balance: bigint, minimum: bigint) {
 }
 
 async function readValidatorStatuses(publicClient: PublicClient, validators: HolderValidator[]): Promise<ValidatorStatus[]> {
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
-  const vaultConfig = getContractConfig(monadTestnet.id, "StakingVault");
+  const controller = getContractConfig(protocolChain.id, "StakingController");
+  const vaultConfig = getContractConfig(protocolChain.id, "StakingVault");
   if (!controller || !vaultConfig) throw new Error("Validator contracts are not configured on Monad Testnet.");
   if (validators.length === 0) return [];
 
@@ -145,14 +145,14 @@ export default function MyValidatorsPage() {
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 20_000,
   });
   const validators = (directoryQuery.data?.validators ?? []).filter((validator) => validator.owner.toLowerCase() === address?.toLowerCase());
   const statusQuery = useQuery({
     queryKey: ["my-validator-status", address?.toLowerCase(), validators.map((validator) => validator.tokenId).join(",")],
     queryFn: () => readValidatorStatuses(publicClient!, validators),
-    enabled: Boolean(publicClient && address && chain?.id === monadTestnet.id && validators.length),
+    enabled: Boolean(publicClient && address && chain?.id === protocolChain.id && validators.length),
     refetchInterval: 20_000,
   });
 
@@ -168,7 +168,7 @@ export default function MyValidatorsPage() {
       </header>
 
       {!address ? <section className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={16} className="qv:text-[#a99aff]" />Connect the operator wallet to load your validator identities.</section>
-        : chain?.id !== monadTestnet.id ? <section className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to view validator status.</section>
+        : chain?.id !== protocolChain.id ? <section className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to {protocolChain.name} to view validator status.</section>
           : directoryQuery.isPending ? <section className={`${panel} qv:flex qv:items-center qv:gap-2 qv:p-8 qv:text-[11px] qv:text-[#999bad]`}><LoaderCircle size={15} className="qv:animate-spin" />Reading your validator identities from Monad…</section>
             : directoryQuery.isError ? <section className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</section>
               : validators.length === 0 ? <section className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><ShieldCheck size={22} className="qv:text-[#a99aff]" /><h2 className="qv:mb-1 qv:mt-3 qv:text-[14px] qv:font-semibold qv:text-white">No validator identities found</h2><p className="qv:max-w-[350px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">Create a validator identity from the dashboard to start tracking vault backing and native registration.</p><Link className={`${button} qv:mt-4`} href="/">Open validator onboarding <ArrowRight size={12} /></Link></section>

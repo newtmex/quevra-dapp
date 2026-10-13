@@ -33,6 +33,6 @@ export function getContractAbi<TName extends RegistryContractName>(chainId: numb
   return getContractConfig(chainId, name)?.abi ?? null;
 }
 
-export function getDeploymentMetadata<TChainId extends RegistryChainId>(chainId: TChainId) {
+export function getDeploymentMetadata(chainId: number) {
   return deploymentMetadataByChainId[String(chainId) as keyof typeof deploymentMetadataByChainId] ?? null;
 }

@@ -7,7 +7,7 @@ import { ArrowUpRight, CheckCircle2, CircleAlert, Coins, LoaderCircle, ShieldChe
 import { decodeFunctionResult, encodeFunctionData, formatUnits, isAddress, parseAbi, parseUnits, type Address, type PublicClient } from "viem";
 import { erc20Abi } from "viem";
 import { getContractConfig, getDeploymentMetadata } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeTokenApprovalStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory } from "./reward-data";
@@ -50,7 +50,7 @@ async function readFundingState(
   token: Address,
   wallet: Address,
 ): Promise<FundingState> {
-  const voter = getContractConfig(monadTestnet.id, "ValidatorsVoter");
+  const voter = getContractConfig(protocolChain.id, "ValidatorsVoter");
   if (!voter) throw new Error("The validator voter is not configured on Monad Testnet.");
   const [epoch, symbol, decimals, balance, voterWhitelisted, bribeRegistered] = await Promise.all([
     currentEpoch(publicClient),
@@ -80,13 +80,13 @@ export default function IncentivesPage() {
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
   const [selectedValidatorId, setSelectedValidatorId] = useState("");
-  const [tokenAddress, setTokenAddress] = useState<string>(() => getDeploymentMetadata(monadTestnet.id)?.config.rewardToken ?? "");
+  const [tokenAddress, setTokenAddress] = useState<string>(() => getDeploymentMetadata(protocolChain.id)?.config.rewardToken ?? "");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
   });
   const validators = (directoryQuery.data?.validators ?? []).filter((validator) => validator.bribe);
@@ -104,7 +104,7 @@ export default function IncentivesPage() {
   const fundingQuery = useQuery({
     queryKey: ["incentive-funding-state", selectedValidator?.bribe?.toLowerCase(), token?.toLowerCase(), address?.toLowerCase()],
     queryFn: () => readFundingState(publicClient!, selectedValidator!.bribe!, token!, address as Address),
-    enabled: Boolean(publicClient && address && chain?.id === monadTestnet.id && selectedValidator?.bribe && token),
+    enabled: Boolean(publicClient && address && chain?.id === protocolChain.id && selectedValidator?.bribe && token),
     refetchInterval: 20_000,
   });
   const state = fundingQuery.data;
@@ -114,7 +114,7 @@ export default function IncentivesPage() {
     try { parsedAmount = parseUnits(amount.trim(), state.decimals); } catch { parsedAmount = BigInt(0); }
   }
   const supportedToken = Boolean(state && (state.voterWhitelisted || state.bribeRegistered));
-  const canFund = Boolean(address && chain?.id === monadTestnet.id && selectedValidator?.bribe && token && state
+  const canFund = Boolean(address && chain?.id === protocolChain.id && selectedValidator?.bribe && token && state
     && supportedToken && parsedAmount > BigInt(0) && parsedAmount <= state.balance);
   const fundingSteps = useMemo(() => {
     if (!selectedValidator?.bribe || !token || parsedAmount <= BigInt(0)) return [];
@@ -153,7 +153,7 @@ export default function IncentivesPage() {
       </header>
 
       {!address ? <div className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={17} className="qv:text-[#a99aff]" />Connect a wallet to fund validator incentives.</div>
-        : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to fund incentives.</div>
+        : chain?.id !== protocolChain.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to {protocolChain.name} to fund incentives.</div>
           : directoryQuery.isPending ? <div className={`${panel} qv:flex qv:items-center qv:justify-center qv:gap-2 qv:p-8 qv:text-[11px] qv:text-[#999bad]`}><LoaderCircle size={14} className="qv:animate-spin" />Loading validator bribe contracts…</div>
             : directoryQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
               : validators.length === 0 ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><ShieldCheck size={20} className="qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">No validator incentive contracts yet</p><p className="qv:mt-1 qv:max-w-[360px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">Validator identities receive a bribe contract during onboarding. Once indexed, you can fund it here.</p></div>

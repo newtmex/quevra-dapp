@@ -6,7 +6,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { ArrowDownToLine, Coins, LoaderCircle, Sparkles, Wallet } from "lucide-react";
 import { formatEther, parseAbi, type Address } from "viem";
 import { getContractConfig } from "@/contracts/shared";
-import { monadTestnet } from "@/lib/web3";
+import { protocolChain } from "@/lib/web3";
 import TransactionButton from "@/lib/tx-flow/TransactionButton";
 import { makeAddressWriteStep, makeContractWriteStep } from "@/lib/tx-flow/steps";
 import { fetchHolderDirectory, formatTokenAmount, getIncentiveTokenList, readIncentiveRewards, readNativeRewards } from "./reward-data";
@@ -25,7 +25,7 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
   const positions = directoryQuery.data?.positions ?? [];
@@ -41,16 +41,16 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
   const nativeQuery = useQuery({
     queryKey: ["native-rewards", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.vault).join(",")],
     queryFn: () => readNativeRewards(publicClient!, BigInt(selectedTokenId), validators),
-    enabled: Boolean(address && publicClient && selectedPosition && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && publicClient && selectedPosition && chain?.id === protocolChain.id),
     refetchInterval: 20_000,
   });
   const incentiveQuery = useQuery({
     queryKey: ["incentive-rewards", address?.toLowerCase(), selectedTokenId, validators.map((validator) => validator.bribe).join(",")],
     queryFn: () => readIncentiveRewards(publicClient!, validators, BigInt(selectedTokenId)),
-    enabled: Boolean(address && publicClient && selectedPosition && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && publicClient && selectedPosition && chain?.id === protocolChain.id),
     refetchInterval: 30_000,
   });
-  const controller = getContractConfig(monadTestnet.id, "StakingController");
+  const controller = getContractConfig(protocolChain.id, "StakingController");
   const claimableIncentives = (incentiveQuery.data ?? []).filter((reward) => reward.amount > BigInt(0));
   const incentiveGroups = useMemo(() => getIncentiveTokenList(claimableIncentives), [claimableIncentives]);
   const nativeVaults = nativeQuery.data?.vaults ?? [];
@@ -98,7 +98,7 @@ export default function RewardsPage({ initialTokenId }: { initialTokenId?: strin
       </header>
 
       {!address ? <div className={`${panel} qv:flex qv:items-center qv:gap-3 qv:p-5 qv:text-[11px] qv:text-[#b9bac8]`}><Wallet size={17} className="qv:text-[#a99aff]" />Connect a wallet to see rewards for your veMON positions.</div>
-        : chain?.id !== monadTestnet.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to Monad Testnet to view and claim rewards.</div>
+        : chain?.id !== protocolChain.id ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ffcf7a]`}>Switch to {protocolChain.name} to view and claim rewards.</div>
           : directoryQuery.isPending ? <div className={`${panel} qv:p-8 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading your reward positions…</div>
             : directoryQuery.isError ? <div className={`${panel} qv:p-5 qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
               : positions.length === 0 ? <div className={`${panel} qv:flex qv:flex-col qv:items-center qv:p-9 qv:text-center`}><Wallet size={20} className="qv:text-[#a99aff]" /><p className="qv:mt-3 qv:text-[13px] qv:font-semibold qv:text-white">Create a veMON position first</p><p className="qv:mt-1 qv:text-[10px] qv:text-[#999bad]">Rewards are attached to the position that backed validators.</p></div>

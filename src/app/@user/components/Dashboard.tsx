@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { Activity, ArrowUpRight, ExternalLink, Gauge, Plus, Sparkles, Wallet } from "lucide-react";
 import { formatEther, type Address, type Hex } from "viem";
-import { monadTestnet } from "@/lib/web3";
+import { explorerTxUrl, protocolChain } from "@/lib/web3";
 import { getContractConfig } from "@/contracts/shared";
 import { fetchHolderDirectory, fetchWalletActivity, type WalletActivity } from "@/lib/rpc-data";
 import { createValidatorSigningRequest, submitValidatedRegistration, validateRegistrationArtifact, validatorRegistrationCall, type ValidatorRegistrationArtifact, type ValidatorSigningRequest } from "@/lib/validator-signing";
@@ -40,13 +40,13 @@ export default function Dashboard() {
   const directoryQuery = useQuery({
     queryKey: ["quevra-directory", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchHolderDirectory(publicClient!, address as Address),
-    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
   const activityQuery = useQuery({
     queryKey: ["quevra-activity", address?.toLowerCase(), chain?.id],
     queryFn: () => fetchWalletActivity(publicClient!, address as Address),
-    enabled: Boolean(address && publicClient && chain?.id === monadTestnet.id),
+    enabled: Boolean(address && publicClient && chain?.id === protocolChain.id),
     refetchInterval: 15_000,
   });
   const indexedVeMonPositions = directoryQuery.data?.positions ?? [];
@@ -94,12 +94,12 @@ export default function Dashboard() {
     setRequestCopied(false);
     setSigningRequest(null);
     if (validatorMode === "existing") return;
-    if (!address || chain?.id !== monadTestnet.id || !publicClient) {
+    if (!address || chain?.id !== protocolChain.id || !publicClient) {
       setCreationError("Connect a wallet on Monad Testnet to prepare a new validator request.");
       return;
     }
 
-    const controller = getContractConfig(monadTestnet.id, "StakingController");
+    const controller = getContractConfig(protocolChain.id, "StakingController");
     if (!controller?.address) {
       setCreationError("The staking controller is not configured for Monad Testnet.");
       return;
@@ -117,7 +117,7 @@ export default function Dashboard() {
       setCommission(effectiveCommission);
       setRegistrationAmount(amount);
       setSigningRequest(createValidatorSigningRequest({
-        chainId: monadTestnet.id,
+        chainId: protocolChain.id,
         operator: address,
         saltSeed: nextSaltSeed,
         authAddress: auth,
@@ -160,8 +160,8 @@ export default function Dashboard() {
   }
 
   async function refreshRegistrationConfig() {
-    if (!address || !saltSeed || chain?.id !== monadTestnet.id || !publicClient) throw new Error("Reconnect the operator wallet to Monad Testnet before submitting.");
-    const controller = getContractConfig(monadTestnet.id, "StakingController");
+    if (!address || !saltSeed || chain?.id !== protocolChain.id || !publicClient) throw new Error(`Reconnect the operator wallet to ${protocolChain.name} before submitting.`);
+    const controller = getContractConfig(protocolChain.id, "StakingController");
     if (!controller?.address) throw new Error("The staking controller is not configured for Monad Testnet.");
     const [auth, freshCommission, amount] = await publicClient.readContract({
       address: controller.address,
@@ -170,7 +170,7 @@ export default function Dashboard() {
       args: [address, saltSeed],
     } as never) as readonly [Address, bigint, bigint];
     const freshRequest = createValidatorSigningRequest({
-      chainId: monadTestnet.id,
+      chainId: protocolChain.id,
       operator: address,
       saltSeed,
       authAddress: auth,
@@ -251,7 +251,7 @@ export default function Dashboard() {
             <span className="qv:block qv:text-xs qv:text-[#c1bbdf]">Portfolio overview</span>
             <span className="qv:inline-flex qv:items-center qv:gap-1.5 qv:rounded-full qv:border qv:border-[rgba(82,221,195,0.22)] qv:px-2 qv:py-1 qv:text-[9px] qv:font-bold qv:tracking-[0.08em] qv:text-[#8de5d4]"><span className="qv:size-[5px] qv:rounded-full qv:bg-[#52ddc3]" /> TESTNET</span>
           </div>
-          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">Monad · chain 10143</span>
+          <span className="qv:ml-auto qv:text-right qv:text-[9px] qv:text-[rgba(238,236,248,0.88)] qv:sm:text-[11px]">{`Monad · chain ${protocolChain.id}`}</span>
         </div>
         <div className="qv:relative qv:z-10 qv:mt-7 qv:flex qv:flex-wrap qv:items-end qv:justify-between qv:gap-4">
           <div className="qv:min-w-0">
@@ -291,10 +291,10 @@ export default function Dashboard() {
           </div>
           <div aria-label="Recent Quevra position activity" className="qv:mt-4 qv:min-h-[174px] qv:space-y-1.5">
             {!isConnected ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Connect your wallet to view Quevra activity.</p> : null}
-            {isConnected && chain?.id !== monadTestnet.id ? <p className="qv:text-[10px] qv:text-[#e6b971]">Switch to Monad Testnet to view position activity.</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && activityQuery.isPending ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Loading recent position activity…</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && activityQuery.isError ? <p className="qv:text-[10px] qv:text-[#e6b971]">Could not read recent position activity from Monad RPC.</p> : null}
-            {isConnected && chain?.id === monadTestnet.id && activityQuery.isSuccess && indexedActivities.length === 0 ? <p className="qv:text-[10px] qv:text-[#a9acbd]">No veNFT activity found for this wallet.</p> : null}
+            {isConnected && chain?.id !== protocolChain.id ? <p className="qv:text-[10px] qv:text-[#e6b971]">Switch to {protocolChain.name} to view position activity.</p> : null}
+            {isConnected && chain?.id === protocolChain.id && activityQuery.isPending ? <p className="qv:text-[10px] qv:text-[#a9acbd]">Loading recent position activity…</p> : null}
+            {isConnected && chain?.id === protocolChain.id && activityQuery.isError ? <p className="qv:text-[10px] qv:text-[#e6b971]">Could not read recent position activity from Monad RPC.</p> : null}
+            {isConnected && chain?.id === protocolChain.id && activityQuery.isSuccess && indexedActivities.length === 0 ? <p className="qv:text-[10px] qv:text-[#a9acbd]">No veNFT activity found for this wallet.</p> : null}
             {indexedActivities.slice(0, 5).map((activity) => (
               <div className="qv:flex qv:items-center qv:justify-between qv:gap-3 qv:rounded-md qv:border qv:border-white/[0.055] qv:bg-[#0e1018] qv:px-3 qv:py-2" key={activity.id}>
                 <span className="qv:min-w-0 qv:truncate qv:text-[10px] qv:text-[#d5d5e0]">{activityDescription(activity)}</span>
@@ -361,7 +361,7 @@ pnpm --filter @quevra/ops keystore:public`}</pre>
 <article className="qv:grid qv:gap-2 qv:rounded-lg qv:border qv:border-white/[0.075] qv:bg-[#0e1018] qv:p-3">
                   <strong className="qv:text-[10px] qv:text-[#d5d5e0]">Step 2 · Copy Quevra’s signing data</strong>
                   <p className="qv:m-0 qv:text-[9px] qv:leading-relaxed qv:text-[#aeb1c1]">Generate the request below. It contains the network, operator, salt, auth address, stake amount, and commission read from Quevra’s contracts. Copy it into a JSON file on the operator machine; do not change these values.</p>
-                  <button className="qv:min-h-9 qv:rounded-md qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#c5bbff] qv:disabled:opacity-40" disabled={preparingSigningDetails || !address || chain?.id !== monadTestnet.id} onClick={() => void prepareValidatorDetails()} type="button">{preparingSigningDetails ? "Reading Quevra contracts…" : signingRequest ? "Generate fresh signing data" : "Generate signing data"}</button>
+                  <button className="qv:min-h-9 qv:rounded-md qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#c5bbff] qv:disabled:opacity-40" disabled={preparingSigningDetails || !address || chain?.id !== protocolChain.id} onClick={() => void prepareValidatorDetails()} type="button">{preparingSigningDetails ? "Reading Quevra contracts…" : signingRequest ? "Generate fresh signing data" : "Generate signing data"}</button>
                   <button className="qv:min-h-9 qv:rounded-md qv:border qv:border-white/10 qv:bg-white/[0.035] qv:px-3 qv:text-[10px] qv:font-semibold qv:text-[#c5bbff] qv:disabled:opacity-40" disabled={!signingRequest} onClick={() => void copySigningRequest()} type="button">{requestCopied ? "Signing data copied" : "Copy signing data"}</button>
                   {signingRequest ? <textarea aria-label="Quevra signing data" className={`${inputClass} qv:h-[144px] qv:resize-y qv:py-2 qv:font-mono qv:text-[9px]`} readOnly value={JSON.stringify(signingRequest, null, 2)} /> : <p className="qv:m-0 qv:text-[9px] qv:text-[#a9acbd]">Generate signing data to continue.</p>}
                   {expectedAuthAddress ? <span className="qv:text-[9px] qv:text-[#9294a5]">Configured stake {registrationAmount !== null ? `${formatEther(registrationAmount)} MON` : "—"} · commission {commission?.toString() ?? "—"}</span> : null}
@@ -419,15 +419,26 @@ pnpm --filter @quevra/ops keystore:public`}</pre>
       <section className={`${panelClass} qv:mt-4 qv:min-w-0 qv:p-[17px_15px] qv:sm:p-5`}>
         <div className="qv:flex qv:items-start qv:justify-between qv:gap-3">
           <div><span className={kickerClass}>ONCHAIN HISTORY</span><h2 className={panelTitleClass}>Recent transactions</h2></div>
-          <a className={explorerLinkClass} href="https://testnet.monadexplorer.com" target="_blank" rel="noreferrer">Monad Explorer <ExternalLink size={13} /></a>
+          {protocolChain.blockExplorers?.default.url ? (
+            <a className={explorerLinkClass} href={protocolChain.blockExplorers.default.url} target="_blank" rel="noreferrer">{protocolChain.blockExplorers.default.name} <ExternalLink size={13} /></a>
+          ) : (
+            <span className="qv:text-[10px] qv:text-[#a9acbd]">{protocolChain.name}</span>
+          )}
         </div>
-        {recentTransactions.length > 0 ? recentTransactions.map((transaction) => (
+        {recentTransactions.length > 0 ? recentTransactions.map((transaction) => {
+          const txUrl = explorerTxUrl(protocolChain.id, transaction.transactionHash);
+          return (
           <div className="qv:flex qv:min-h-[66px] qv:min-w-0 qv:flex-wrap qv:items-center qv:gap-3 qv:border-t qv:border-white/[0.075] qv:py-2" key={transaction.transactionHash}>
             <span className="qv:grid qv:size-[34px] qv:shrink-0 qv:place-items-center qv:rounded-[10px] qv:border qv:border-[rgba(82,221,195,0.14)] qv:bg-[rgba(82,221,195,0.08)] qv:text-[#52ddc3]"><Gauge size={16} /></span>
             <div className="qv:flex qv:min-w-0 qv:flex-1 qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{activityDescription(transaction)}</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">{transaction.tokenId ? `Token #${transaction.tokenId} · ` : ""}block {transaction.blockNumber}</span></div>
-            <a className={`${explorerLinkClass} qv:min-w-0 qv:wrap-anywhere`} href={`${monadTestnet.blockExplorers.default.url}/tx/${transaction.transactionHash}`} target="_blank" rel="noreferrer">{transaction.transactionHash.slice(0, 6)}…{transaction.transactionHash.slice(-4)} <ExternalLink size={12} /></a>
+            {txUrl ? (
+              <a className={`${explorerLinkClass} qv:min-w-0 qv:wrap-anywhere`} href={txUrl} target="_blank" rel="noreferrer">{transaction.transactionHash.slice(0, 6)}…{transaction.transactionHash.slice(-4)} <ExternalLink size={12} /></a>
+            ) : (
+              <span className="qv:min-w-0 qv:wrap-anywhere qv:text-[10px] qv:text-[#a9acbd]">{transaction.transactionHash.slice(0, 6)}…{transaction.transactionHash.slice(-4)}</span>
+            )}
           </div>
-        )) : (
+          );
+        }) : (
           <div className="qv:mt-2.5 qv:flex qv:min-h-[81px] qv:items-center qv:gap-3 qv:border-t qv:border-white/[0.075]">
             <span className={`${emptyIconClass} qv:size-[34px] qv:rounded-[10px]`}><Activity size={18} /></span>
             <div className="qv:flex qv:flex-col qv:gap-1"><strong className="qv:text-[11px] qv:font-semibold qv:text-[#d5d5e0]">{activityQuery.isError ? "RPC activity unavailable" : isConnected ? "No recent transactions found" : "Your activity will show here"}</strong><span className="qv:text-[10px] qv:text-[#a9acbd]">{activityQuery.isError ? "Monad RPC could not return veNFT transfer history." : isConnected ? "Recent veNFT transfers and position creation appear here." : "Connect your wallet to view your Quevra history."}</span></div>
