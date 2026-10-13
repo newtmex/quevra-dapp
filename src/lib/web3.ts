@@ -86,6 +86,9 @@ export function getWagmiConfig(): Config {
   if (typeof window === "undefined") {
     serverConfig ??= createConfig({
       chains: supportedChains,
+      batch: {
+        [monadSolonet.id]: { multicall: { deployless: true } },
+      },
       multiInjectedProviderDiscovery: false,
       transports,
       ssr: true,
@@ -101,6 +104,9 @@ export function getWagmiConfig(): Config {
       });
       browserConfig = createConfig({
         chains: supportedChains,
+        batch: {
+          [monadSolonet.id]: { multicall: { deployless: true } },
+        },
         connectors,
         transports,
         ssr: true,
@@ -114,6 +120,9 @@ export function getWagmiConfig(): Config {
           ? {}
           : { wallets: [{ groupName: "Browser wallets", wallets: [injectedWallet] }] }),
         chains: supportedChains,
+        batch: {
+          [monadSolonet.id]: { multicall: { deployless: true } },
+        },
         transports,
         ssr: true,
       });
