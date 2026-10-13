@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowDownToLine, Coins, HandCoins, KeyRound, Landmark, LayoutDashboard } from "lucide-react";
+import { ArrowDownToLine, BadgeCheck, Coins, HandCoins, KeyRound, Landmark, LayoutDashboard } from "lucide-react";
 
 export const networkSections = [
   { href: "/", icon: "layout", label: "Dashboard" },
+  { href: "/validators", icon: "validators", label: "My validators" },
   { href: "/stake", icon: "stake", label: "Stake MON" },
   { href: "/rewards", icon: "rewards", label: "Rewards" },
   { href: "/incentives", icon: "incentives", label: "Fund incentives" },
@@ -33,7 +34,7 @@ export default function MainMenu() {
             href={section.href}
             key={section.label}
           >
-            {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : section.icon === "rewards" ? <Coins aria-hidden="true" size={17} /> : section.icon === "incentives" ? <HandCoins aria-hidden="true" size={17} /> : section.icon === "exit" ? <ArrowDownToLine aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
+            {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "validators" ? <BadgeCheck aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : section.icon === "rewards" ? <Coins aria-hidden="true" size={17} /> : section.icon === "incentives" ? <HandCoins aria-hidden="true" size={17} /> : section.icon === "exit" ? <ArrowDownToLine aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
             <span>{section.label}</span>
           </Link>
         ))}

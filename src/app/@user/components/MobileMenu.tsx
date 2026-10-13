@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowDownToLine, Coins, HandCoins, KeyRound, Landmark, LayoutDashboard, Menu, X } from "lucide-react";
+import { ArrowDownToLine, BadgeCheck, Coins, HandCoins, KeyRound, Landmark, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { networkSections } from "./MainMenu";
 
@@ -37,7 +37,7 @@ export default function MobileMenu() {
               key={section.label}
               onClick={() => setOpen(false)}
             >
-              {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : section.icon === "rewards" ? <Coins aria-hidden="true" size={17} /> : section.icon === "incentives" ? <HandCoins aria-hidden="true" size={17} /> : section.icon === "exit" ? <ArrowDownToLine aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
+              {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "validators" ? <BadgeCheck aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : section.icon === "rewards" ? <Coins aria-hidden="true" size={17} /> : section.icon === "incentives" ? <HandCoins aria-hidden="true" size={17} /> : section.icon === "exit" ? <ArrowDownToLine aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
               <span>{section.label}</span>
             </Link>
           ))}
