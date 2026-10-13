@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { KeyRound, Landmark, LayoutDashboard } from "lucide-react";
+import { ArrowDownToLine, Coins, KeyRound, Landmark, LayoutDashboard } from "lucide-react";
 
 export const networkSections = [
   { href: "/", icon: "layout", label: "Dashboard" },
   { href: "/stake", icon: "stake", label: "Stake MON" },
+  { href: "/rewards", icon: "rewards", label: "Rewards" },
   { href: "/lock", icon: "lock", label: "Lock veMON" },
+  { href: "/exit", icon: "exit", label: "Exit position" },
 ];
 
 export default function MainMenu() {
@@ -30,7 +32,7 @@ export default function MainMenu() {
             href={section.href}
             key={section.label}
           >
-            {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
+            {section.icon === "layout" ? <LayoutDashboard aria-hidden="true" size={17} /> : section.icon === "stake" ? <Landmark aria-hidden="true" size={17} /> : section.icon === "rewards" ? <Coins aria-hidden="true" size={17} /> : section.icon === "exit" ? <ArrowDownToLine aria-hidden="true" size={17} /> : <KeyRound aria-hidden="true" size={17} />}
             <span>{section.label}</span>
           </Link>
         ))}
