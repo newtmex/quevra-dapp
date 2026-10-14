@@ -35,14 +35,14 @@ export default function LockPage() {
   const metadata = getDeploymentMetadata(protocolChain.id);
   const maxCycles = Number(metadata?.config.maxLockCycles ?? 4);
   const queryKey = ["quevra-directory", address?.toLowerCase(), chain?.id];
-  const positionsQuery = useQuery({
+  const directoryQuery = useQuery({
     queryKey,
-    queryFn: async () => (await fetchHolderDirectory(address as Address)).positions,
+    queryFn: () => fetchHolderDirectory(address as Address),
     enabled: Boolean(address && publicClient && chain?.id === protocolChain.id && escrow?.address),
     refetchInterval: 12_000,
     placeholderData: keepPreviousWalletData(address),
   });
-  const positions = positionsQuery.data ?? [];
+  const positions = directoryQuery.data?.positions ?? [];
   const totalLocked = useMemo(() => positions.reduce((sum, position) => sum + BigInt(position.amount), BigInt(0)), [positions]);
   const parsedAmount = (() => {
     try { return amount.trim() ? parseEther(amount) : BigInt(0); } catch { return BigInt(0); }
@@ -127,11 +127,11 @@ export default function LockPage() {
         <div className="qv:flex qv:gap-3">
           <div className={`${panel} qv:min-w-[128px] qv:px-4 qv:py-3`}>
             <p className="qv:text-[9px] qv:font-bold qv:uppercase qv:tracking-[0.1em] qv:text-[#999bad]">Total locked</p>
-            <p className="qv:mt-1 qv:text-[17px] qv:font-semibold qv:text-white">{positionsQuery.isPending ? "—" : amountLabel(totalLocked.toString())} <span className="qv:text-[10px] qv:text-[#aaaabd]">MON</span></p>
+            <p className="qv:mt-1 qv:text-[17px] qv:font-semibold qv:text-white">{directoryQuery.isPending ? "—" : amountLabel(totalLocked.toString())} <span className="qv:text-[10px] qv:text-[#aaaabd]">MON</span></p>
           </div>
           <div className={`${panel} qv:min-w-[112px] qv:px-4 qv:py-3`}>
             <p className="qv:text-[9px] qv:font-bold qv:uppercase qv:tracking-[0.1em] qv:text-[#999bad]">Positions</p>
-            <p className="qv:mt-1 qv:text-[17px] qv:font-semibold qv:text-white">{positionsQuery.isPending ? "—" : positions.length}</p>
+            <p className="qv:mt-1 qv:text-[17px] qv:font-semibold qv:text-white">{directoryQuery.isPending ? "—" : positions.length}</p>
           </div>
         </div>
       </header>
@@ -189,12 +189,12 @@ export default function LockPage() {
         <div className="qv:space-y-3">
           <div className="qv:flex qv:items-end qv:justify-between">
             <div><p className="qv:text-[10px] qv:font-bold qv:uppercase qv:tracking-[0.12em] qv:text-[#aeb0c0]">Your positions</p><h2 className="qv:mt-1 qv:text-[18px] qv:font-semibold qv:text-[#f0eff8]">Manage veMON</h2></div>
-            {address && <button className="qv:text-[10px] qv:text-[#a99aff] qv:hover:text-white" onClick={() => void positionsQuery.refetch()} type="button">Refresh</button>}
+            {address && <button className="qv:text-[10px] qv:text-[#a99aff] qv:hover:text-white" onClick={() => void directoryQuery.refetch()} type="button">Refresh</button>}
           </div>
           {!address ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Connect your wallet to see your veMON positions.</div>
             : chain?.id !== protocolChain.id ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Switch to {protocolChain.name} to view your positions.</div>
-              : positionsQuery.isPending ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading your veMON positions…</div>
-                : positionsQuery.isError ? <div className={`${panel} qv:px-5 qv:py-8 qv:text-center qv:text-[11px] qv:text-[#ff9caa]`}>{positionsQuery.error.message}</div>
+              : directoryQuery.isPending ? <div className={`${panel} qv:px-5 qv:py-10 qv:text-center qv:text-[11px] qv:text-[#999bad]`}>Loading your veMON positions…</div>
+                : directoryQuery.isError ? <div className={`${panel} qv:px-5 qv:py-8 qv:text-center qv:text-[11px] qv:text-[#ff9caa]`}>{directoryQuery.error.message}</div>
                   : positions.length === 0 ? <div className={`${panel} qv:flex qv:min-h-[240px] qv:flex-col qv:items-center qv:justify-center qv:px-6 qv:text-center`}><span className="qv:grid qv:size-11 qv:place-items-center qv:rounded-xl qv:bg-[rgba(141,120,255,0.09)] qv:text-[#a99aff]"><LockKeyhole size={19} /></span><p className="qv:mt-4 qv:text-[13px] qv:font-semibold qv:text-[#e9e9f1]">No locks yet</p><p className="qv:mt-1 qv:max-w-[260px] qv:text-[10px] qv:leading-4 qv:text-[#999bad]">Create a lock to receive veMON voting power and start managing your positions here.</p></div>
                     : <div className="qv:space-y-3">{positions.map((position) => (
                       <article className={`${panel} qv:p-4 qv:sm:p-5`} key={position.tokenId}>
